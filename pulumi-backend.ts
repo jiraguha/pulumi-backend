@@ -53,7 +53,7 @@ const COMMANDS = {
 
 // Extract command and arguments
 const args = Deno.args;
-const command = args[0]?.toLowerCase();
+const command = args[0]
 const commandArgs = args.slice(1);
 
 // Show banner
