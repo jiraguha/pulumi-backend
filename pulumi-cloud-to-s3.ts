@@ -2,10 +2,10 @@
 
 /**
  * 🚀 Pulumi Stack Migration Tool
- * 
+ *
  * A professional-grade CLI tool to migrate Pulumi stacks from Pulumi Cloud to an S3 backend.
  * Features enhanced logging, progress tracking, and comprehensive secrets management.
- * 
+ *
  * 📋 Usage:
  *   deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \
  *     --stack=mystack \
@@ -17,7 +17,7 @@ import { parse } from "https://deno.land/std/flags/mod.ts";
 import { join } from "https://deno.land/std/path/mod.ts";
 import { ensureDir } from "https://deno.land/std/fs/mod.ts";
 import { sprintf } from "https://deno.land/std/fmt/printf.ts";
-import { 
+import {
   bgGreen, bgBlue, bgYellow, bgRed, bgCyan,
   black, bold, italic, underline, dim, red, yellow, green, blue, cyan, magenta, white, gray
 } from "https://deno.land/std/fmt/colors.ts";
@@ -32,11 +32,11 @@ import  Spinner  from "https://deno.land/x/cli_spinners@v0.0.3/mod.ts";
 // Define command line arguments
 const args = parse(Deno.args, {
   string: [
-    "stack", "bucket", "region", "workspace", "encryption-key", "dynamodb-table", 
+    "stack", "bucket", "region", "workspace", "encryption-key", "dynamodb-table",
     "passphrase", "kms-alias", "secrets-provider", "output-format"
   ],
   boolean: [
-    "help", "delete-source", "skip-verify", "verbose", "create-bucket", "create-dynamodb", 
+    "help", "delete-source", "skip-verify", "verbose", "create-bucket", "create-dynamodb",
     "create-kms", "quiet", "yes", "no-color", "interactive"
   ],
   alias: {
@@ -79,7 +79,7 @@ if (args["no-color"]) {
   // Neutralize color functions
   const noColor = (str: string): string => str;
   Object.assign(
-    { bgGreen, bgBlue, bgYellow, bgRed, bgCyan, 
+    { bgGreen, bgBlue, bgYellow, bgRed, bgCyan,
       black, bold, italic, underline, dim, red, yellow, green, blue, cyan, magenta },
     Array(15).fill(noColor)
   );
@@ -112,7 +112,7 @@ const SYMBOLS = {
 // CLI Logo/Banner
 function showBanner() {
   if (args.quiet) return;
-  
+
   console.log(
     `
 ${bgBlue(black(" PULUMI "))}${bgCyan(black(" MIGRATION "))}${bgGreen(black(" TOOL "))} ${cyan("v1.0.0")}
@@ -135,10 +135,10 @@ enum LogLevel {
 }
 
 // Current log level based on args
-const currentLogLevel = args.quiet 
+const currentLogLevel = args.quiet
   ? LogLevel.ERROR
-  : args.verbose 
-    ? LogLevel.DEBUG 
+  : args.verbose
+    ? LogLevel.DEBUG
     : LogLevel.INFO;
 
 /**
@@ -215,7 +215,7 @@ class Logger {
       console.log();
       console.log(
         this.formatMessage(
-          bgBlue(black(` ${title.toUpperCase()} `)), 
+          bgBlue(black(` ${title.toUpperCase()} `)),
           ""
         )
       );
@@ -251,7 +251,7 @@ class Logger {
   endTimer(id: string): number {
     const start = this.timestamps.get(id);
     if (!start) return 0;
-    
+
     const elapsed = performance.now() - start;
     this.timestamps.delete(id);
     return elapsed;
@@ -266,14 +266,14 @@ class Logger {
         message: this.formatMessage(message, ""),
         color: "cyan"
       });
-      
+
       this.spinners.set(id, spinner);
       spinner.start();
     } else {
       // Just log the message without a spinner in quiet mode
       this.info(message);
     }
-    
+
     // Start a timer regardless of spinner
     this.startTimer(id);
   }
@@ -296,7 +296,7 @@ class Logger {
   successSpinner(id: string, message: string): void {
     const elapsed = this.endTimer(id);
     const elapsedText = elapsed ? ` ${dim(`(${(elapsed/1000).toFixed(1)}s)`)}` : '';
-    
+
     if (this.logLevel <= LogLevel.SUCCESS && !args.quiet) {
       const spinner = this.spinners.get(id);
       if (spinner) {
@@ -315,7 +315,7 @@ class Logger {
   warningSpinner(id: string, message: string): void {
     const elapsed = this.endTimer(id);
     const elapsedText = elapsed ? ` ${dim(`(${(elapsed/1000).toFixed(1)}s)`)}` : '';
-    
+
     if (this.logLevel <= LogLevel.WARNING && !args.quiet) {
       const spinner = this.spinners.get(id);
       if (spinner) {
@@ -334,7 +334,7 @@ class Logger {
   errorSpinner(id: string, message: string): void {
     const elapsed = this.endTimer(id);
     const elapsedText = elapsed ? ` ${dim(`(${(elapsed/1000).toFixed(1)}s)`)}` : '';
-    
+
     if (this.logLevel <= LogLevel.ERROR && !args.quiet) {
       const spinner = this.spinners.get(id);
       if (spinner) {
@@ -357,18 +357,18 @@ class Logger {
         const values = [h.length, ...rows.map(r => r[i]?.length || 0)];
         return Math.max(...values);
       });
-      
+
       // Print header
       const header = headers.map((h, i) => h.padEnd(colWidths[i])).join(" | ");
       console.log(this.formatMessage(bold(header), " "));
-      
+
       // Print separator
       const separator = colWidths.map(w => "─".repeat(w)).join("─┼─");
       console.log(this.formatMessage(`${separator}`, " "));
-      
+
       // Print rows
       for (const row of rows) {
-        const formattedRow = row.map((cell, i) => 
+        const formattedRow = row.map((cell, i) =>
           (cell || "").padEnd(colWidths[i])
         ).join(" | ");
         console.log(this.formatMessage(formattedRow, " "));
@@ -383,10 +383,10 @@ class Logger {
   async confirm(question: string, defaultYes = false): Promise<boolean> {
     if (args.yes) return true;
     if (!args.interactive) return defaultYes;
-    
+
     const suffix = defaultYes ? " (Y/n): " : " (y/N): ";
     const response = prompt(this.formatMessage(question + suffix, SYMBOLS.pending));
-    
+
     if (response === null || response === "") return defaultYes;
     return /^y(es)?$/i.test(response);
   }
@@ -403,9 +403,9 @@ const logger = new Logger(currentLogLevel);
  * Execute a shell command with improved output handling
  */
 async function executeCommand(
-  command: string[], 
-  options: { 
-    cwd?: string; 
+  command: string[],
+  options: {
+    cwd?: string;
     silent?: boolean;
     showOutput?: boolean;
     spinnerMessage?: string;
@@ -413,22 +413,22 @@ async function executeCommand(
     errorMessage?: string;
   } = {}
 ): Promise<{ output: string; success: boolean }> {
-  const { 
-    cwd = ".", 
+  const {
+    cwd = ".",
     silent = false,
     showOutput = false,
     spinnerMessage,
     successMessage,
     errorMessage
   } = options;
-  
+
   const cmdString = command.join(" ");
   const spinnerId = `cmd-${Date.now()}`;
-  
+
   try {
     if (!silent) {
       logger.debug(`Executing: ${cmdString}`);
-      
+
       if (spinnerMessage) {
         logger.startSpinner(spinnerId, spinnerMessage);
       }
@@ -460,7 +460,7 @@ async function executeCommand(
       if (spinnerMessage && successMessage) {
         logger.successSpinner(spinnerId, successMessage);
       }
-      
+
       if (showOutput && output.trim()) {
         logger.indent();
         output.trim().split("\n").forEach(line => {
@@ -468,7 +468,7 @@ async function executeCommand(
         });
         logger.outdent();
       }
-      
+
       if (errorOutput && args.verbose) {
         logger.debug(`Command stderr: ${errorOutput}`);
       }
@@ -479,7 +479,7 @@ async function executeCommand(
     if (!silent) {
       if (spinnerMessage) {
         logger.errorSpinner(
-          spinnerId, 
+          spinnerId,
           errorMessage || `Command failed: ${error.message}`
         );
       } else if (!silent) {
@@ -499,7 +499,7 @@ async function executeCommand(
  */
 function showHelp() {
   showBanner();
-  
+
   console.log(`
 ${bold("USAGE:")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts [OPTIONS]
@@ -589,14 +589,14 @@ if (args.help || !args.stack || !args.bucket) {
 async function checkPulumiInstalled(): Promise<boolean> {
   try {
     const { output, success } = await executeCommand(
-      ["pulumi", "version"], 
+      ["pulumi", "version"],
       { silent: true }
     );
-    
+
     if (success && args.verbose) {
       logger.debug(`Pulumi version: ${output}`);
     }
-    
+
     return success;
   } catch (error) {
     return false;
@@ -609,14 +609,14 @@ async function checkPulumiInstalled(): Promise<boolean> {
 async function checkAwsConfiguration(): Promise<boolean> {
   try {
     const { success, output } = await executeCommand(
-      ["aws", "sts", "get-caller-identity"], 
+      ["aws", "sts", "get-caller-identity"],
       { silent: true }
     );
-    
+
     if (success && args.verbose) {
       logger.debug(`AWS identity: ${output}`);
     }
-    
+
     return success;
   } catch (error) {
     return false;
@@ -632,7 +632,7 @@ async function getCurrentAwsIdentity(): Promise<string | null> {
       ["aws", "sts", "get-caller-identity", "--query", "Arn", "--output", "text"],
       { silent: true }
     );
-    
+
     if (success && output) {
       return output.trim();
     }
@@ -663,29 +663,29 @@ async function checkS3BucketExists(bucket: string, region: string): Promise<bool
  */
 async function createS3Bucket(bucket: string, region: string): Promise<boolean> {
   logger.startSpinner("create-bucket", `Creating S3 bucket "${bucket}" in ${region} for Pulumi state...`);
-  
+
   try {
     // 1. Create S3 bucket
     let createBucketCmd = ["aws", "s3api", "create-bucket", "--bucket", bucket, "--region", region];
-    
+
     // Handle special case for us-east-1 (doesn't use LocationConstraint)
     if (region !== "us-east-1") {
       createBucketCmd.push("--create-bucket-configuration", `LocationConstraint=${region}`);
     }
-    
+
     const { success: bucketCreated } = await executeCommand(
       createBucketCmd,
-      { 
+      {
         silent: true,
         errorMessage: `Failed to create S3 bucket "${bucket}"`
       }
     );
-    
+
     if (!bucketCreated) {
       logger.errorSpinner("create-bucket", `Failed to create S3 bucket "${bucket}"`);
       return false;
     }
-    
+
     logger.updateSpinner("create-bucket", `Configuring S3 bucket "${bucket}" for optimal settings...`);
 
     // 2. Enable versioning on the bucket
@@ -695,7 +695,7 @@ async function createS3Bucket(bucket: string, region: string): Promise<boolean> 
       "--versioning-configuration", "Status=Enabled",
       "--region", region
     ], { silent: true });
-    
+
     if (!versioningEnabled) {
       logger.warningSpinner("create-bucket", `Created bucket but failed to enable versioning for "${bucket}"`);
       return true;
@@ -708,7 +708,7 @@ async function createS3Bucket(bucket: string, region: string): Promise<boolean> 
       "--server-side-encryption-configuration", '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"},"BucketKeyEnabled":true}]}',
       "--region", region
     ], { silent: true });
-    
+
     if (!encryptionEnabled) {
       logger.warningSpinner("create-bucket", `Created bucket but failed to enable encryption for "${bucket}"`);
       return true;
@@ -721,14 +721,14 @@ async function createS3Bucket(bucket: string, region: string): Promise<boolean> 
       "--lifecycle-configuration", '{"Rules":[{"ID":"ExpireOldVersions","Status":"Enabled","NoncurrentVersionExpiration":{"NoncurrentDays":90}}]}',
       "--region", region
     ], { silent: true });
-    
+
     if (!lifecycleAdded) {
       logger.warningSpinner("create-bucket", `Created bucket but failed to add lifecycle policy for "${bucket}"`);
       return true;
     }
 
     logger.successSpinner(
-      "create-bucket", 
+      "create-bucket",
       `S3 bucket "${bucket}" created and configured for Pulumi state`
     );
     return true;
@@ -743,40 +743,40 @@ async function createS3Bucket(bucket: string, region: string): Promise<boolean> 
  */
 async function checkAndFixS3Permissions(bucket: string, region: string): Promise<boolean> {
   logger.startSpinner("fix-perms", `Checking S3 bucket permissions for "${bucket}"...`);
-  
+
   // Get the current AWS identity
   const currentIdentity = await getCurrentAwsIdentity();
   if (!currentIdentity) {
     logger.errorSpinner(
-      "fix-perms", 
+      "fix-perms",
       `Unable to determine your AWS identity. Please ensure you have the necessary permissions.`
     );
     return false;
   }
-  
+
   logger.debug(`Current AWS identity: ${currentIdentity}`);
-  
+
   // Get the current bucket policy, if any
   const { success: getPolicySuccess, output: policyOutput } = await executeCommand(
     ["aws", "s3api", "get-bucket-policy", "--bucket", bucket, "--region", region, "--output", "json"],
     { silent: true }
   );
-  
+
   let currentPolicy: any = {};
   let hasDenyPolicy = false;
-  
+
   if (getPolicySuccess && policyOutput) {
     try {
       // The policy is returned as an escaped JSON string
       const policyString = JSON.parse(policyOutput).Policy;
       currentPolicy = JSON.parse(policyString);
-      
+
       // Check if there's a deny policy affecting our user
       if (currentPolicy.Statement) {
-        hasDenyPolicy = currentPolicy.Statement.some((statement: any) => 
-          statement.Effect === "Deny" && 
-          (statement.Principal === "*" || 
-           (statement.Principal && statement.Principal.AWS && 
+        hasDenyPolicy = currentPolicy.Statement.some((statement: any) =>
+          statement.Effect === "Deny" &&
+          (statement.Principal === "*" ||
+           (statement.Principal && statement.Principal.AWS &&
             (statement.Principal.AWS === "*" || statement.Principal.AWS.includes(currentIdentity))))
         );
       }
@@ -784,12 +784,12 @@ async function checkAndFixS3Permissions(bucket: string, region: string): Promise
       logger.debug(`Error parsing bucket policy: ${error.message}`);
     }
   }
-  
+
   logger.updateSpinner(
-    "fix-perms", 
+    "fix-perms",
     `Updating bucket policy to ensure access for your AWS user...`
   );
-  
+
   // Create the new permission statement
   const newPolicy = {
     Version: "2012-10-17",
@@ -802,7 +802,7 @@ async function checkAndFixS3Permissions(bucket: string, region: string): Promise
         },
         Action: [
           "s3:GetObject",
-          "s3:PutObject", 
+          "s3:PutObject",
           "s3:DeleteObject",
           "s3:ListBucket"
         ],
@@ -813,46 +813,46 @@ async function checkAndFixS3Permissions(bucket: string, region: string): Promise
       }
     ]
   };
-  
+
   // If there's an existing policy, merge our statement into it
   if (currentPolicy.Statement) {
     // Remove any existing statement with the same Sid
     currentPolicy.Statement = currentPolicy.Statement.filter(
       (statement: any) => statement.Sid !== "AllowPulumiStateAccess"
     );
-    
+
     // Add our new statement
     currentPolicy.Statement.push(newPolicy.Statement[0]);
     newPolicy.Statement = currentPolicy.Statement;
   }
-  
+
   const policyString = JSON.stringify(newPolicy);
   const { success: putPolicySuccess } = await executeCommand(
     ["aws", "s3api", "put-bucket-policy", "--bucket", bucket, "--policy", policyString, "--region", region],
     { silent: true }
   );
-  
+
   if (!putPolicySuccess) {
     logger.warningSpinner(
-      "fix-perms", 
+      "fix-perms",
       `Failed to update bucket policy. You may need to update it manually.`
     );
     logger.info(`Ensure your AWS user has permissions: s3:GetObject, s3:PutObject, s3:DeleteObject, s3:ListBucket`);
     return false;
   }
-  
+
   logger.successSpinner(
-    "fix-perms", 
+    "fix-perms",
     `Updated bucket policy to ensure your AWS user can access Pulumi state`
   );
-  
+
   // Wait a moment for the policy to propagate
   if (hasDenyPolicy) {
     logger.startSpinner("propagate", "Waiting for permissions to propagate...");
     await new Promise(resolve => setTimeout(resolve, 5000));
     logger.successSpinner("propagate", "Permissions should be active now");
   }
-  
+
   return true;
 }
 
@@ -861,10 +861,10 @@ async function checkAndFixS3Permissions(bucket: string, region: string): Promise
  */
 async function createDynamoDBTable(tableName: string, region: string): Promise<boolean> {
   logger.startSpinner(
-    "create-dynamo", 
+    "create-dynamo",
     `Creating DynamoDB table "${tableName}" for Pulumi state locking...`
   );
-  
+
   try {
     // 1. Create DynamoDB table
     const { success: tableCreated } = await executeCommand([
@@ -875,17 +875,17 @@ async function createDynamoDBTable(tableName: string, region: string): Promise<b
       "--provisioned-throughput", "ReadCapacityUnits=5,WriteCapacityUnits=5",
       "--region", region
     ], { silent: true });
-    
+
     if (!tableCreated) {
       logger.errorSpinner(
-        "create-dynamo", 
+        "create-dynamo",
         `Failed to create DynamoDB table "${tableName}"`
       );
       return false;
     }
-    
+
     logger.updateSpinner(
-      "create-dynamo", 
+      "create-dynamo",
       `Enabling point-in-time recovery for "${tableName}"...`
     );
 
@@ -896,17 +896,17 @@ async function createDynamoDBTable(tableName: string, region: string): Promise<b
       "--point-in-time-recovery-specification", "PointInTimeRecoveryEnabled=true",
       "--region", region
     ], { silent: true });
-    
+
     if (!recoveryEnabled) {
       logger.warningSpinner(
-        "create-dynamo", 
+        "create-dynamo",
         `Created table but failed to enable point-in-time recovery for "${tableName}"`
       );
       return true;
     }
 
     logger.successSpinner(
-      "create-dynamo", 
+      "create-dynamo",
       `DynamoDB table "${tableName}" created with point-in-time recovery enabled`
     );
     return true;
@@ -938,7 +938,7 @@ async function checkKmsAliasExists(alias: string, region: string): Promise<boole
   try {
     // Remove "alias/" prefix if it exists for the API call
     const aliasName = alias.startsWith("alias/") ? alias : `alias/${alias}`;
-    
+
     const { success } = await executeCommand(
       ["aws", "kms", "describe-key", "--key-id", aliasName, "--region", region],
       { silent: true }
@@ -954,10 +954,10 @@ async function checkKmsAliasExists(alias: string, region: string): Promise<boole
  */
 async function createKmsKeyAndAlias(alias: string, region: string): Promise<string | null> {
   logger.startSpinner(
-    "create-kms", 
+    "create-kms",
     `Creating KMS key and alias "${alias}" for Pulumi secrets...`
   );
-  
+
   try {
     // 1. Create KMS key
     const { success: keyCreated, output: keyOutput } = await executeCommand([
@@ -966,41 +966,41 @@ async function createKmsKeyAndAlias(alias: string, region: string): Promise<stri
       "--tags", "TagKey=Purpose,TagValue=PulumiStateEncryption",
       "--region", region
     ], { silent: true });
-    
+
     if (!keyCreated) {
       logger.errorSpinner("create-kms", `Failed to create KMS key`);
       return null;
     }
-    
+
     // Parse key ID from output
     const keyData = JSON.parse(keyOutput);
     const keyId = keyData.KeyMetadata.KeyId;
-    
+
     logger.updateSpinner(
-      "create-kms", 
+      "create-kms",
       `Creating alias "${alias}" for KMS key ${keyId.substring(0, 8)}...`
     );
-    
+
     // 2. Create alias for the key
     const aliasName = alias.startsWith("alias/") ? alias.substring(6) : alias;
-    
+
     const { success: aliasCreated } = await executeCommand([
       "aws", "kms", "create-alias",
       "--alias-name", `alias/${aliasName}`,
       "--target-key-id", keyId,
       "--region", region
     ], { silent: true });
-    
+
     if (!aliasCreated) {
       logger.warningSpinner(
-        "create-kms", 
+        "create-kms",
         `Created key but failed to create alias. Key ID: ${keyId}`
       );
       return keyId;
     }
-    
+
     logger.successSpinner(
-      "create-kms", 
+      "create-kms",
       `KMS key and alias "${alias}" created successfully`
     );
     return alias;
@@ -1015,21 +1015,21 @@ async function createKmsKeyAndAlias(alias: string, region: string): Promise<stri
  */
 async function changeSecretProvider(
   stack: string,
-  workspacePath: string, 
-  secretsProvider: string, 
-  secretsConfig: { 
-    passphrase?: string; 
-    kmsAlias?: string; 
+  workspacePath: string,
+  secretsProvider: string,
+  secretsConfig: {
+    passphrase?: string;
+    kmsAlias?: string;
     region: string;
   }
 ): Promise<string | null> {
   logger.startSpinner(
-    "change-secrets", 
+    "change-secrets",
     `Changing secrets provider for stack "${stack}"...`
   );
 
   const initCommand = ["pulumi", "stack", "change-secrets-provider"];
-  
+
   if (secretsProvider === "passphrase") {
     // For passphrase secrets provider
     if (secretsConfig.passphrase) {
@@ -1039,7 +1039,7 @@ async function changeSecretProvider(
       initCommand.push("passphrase");
     } else {
       logger.errorSpinner(
-        "change-secrets", 
+        "change-secrets",
         `No passphrase provided for passphrase secrets provider`
       );
       return null;
@@ -1047,35 +1047,35 @@ async function changeSecretProvider(
   } else if (secretsProvider === "awskms") {
     const kmsAlias = secretsConfig.kmsAlias || "alias/pulumi-secrets";
     const region = secretsConfig.region;
-    
+
     // Build the awskms:// URL
     const kmsKeyId = kmsAlias.startsWith("alias/") ? kmsAlias : `alias/${kmsAlias}`;
     const secretsProviderUrl = `awskms://${kmsKeyId}?region=${region}`;
-    
+
     initCommand.push(secretsProviderUrl);
     logger.debug(`Using AWS KMS for secrets encryption: ${secretsProviderUrl}`);
   } else {
     // For any other provider specified
     initCommand.push(secretsProvider);
   }
-  
+
   initCommand.push("--stack", stack);
-  
+
   const { success, output } = await executeCommand(
     initCommand,
     { cwd: workspacePath, silent: true }
   );
-  
+
   if (!success) {
     logger.errorSpinner(
-      "change-secrets", 
+      "change-secrets",
       `Failed to change secrets provider: ${output}`
     );
     return null;
   }
 
   logger.successSpinner(
-    "change-secrets", 
+    "change-secrets",
     `Changed secrets provider to ${secretsProvider} for stack "${stack}"`
   );
   return secretsProvider;
@@ -1090,12 +1090,12 @@ async function exportStackState(stack: string, workspacePath: string): Promise<s
 
   const stackName = stack.replaceAll("/", "-");
   const statePath = join(tempDir, `${stackName}-state.json`);
-  
+
   logger.startSpinner(
-    "export-state", 
+    "export-state",
     `Exporting stack state for "${stack}" to temporary file...`
   );
-  
+
   const { success, output } = await executeCommand(
     ["pulumi", "stack", "export", "--show-secrets", "--stack", stack, "--file", statePath],
     { cwd: workspacePath, silent: true }
@@ -1103,7 +1103,7 @@ async function exportStackState(stack: string, workspacePath: string): Promise<s
 
   if (!success) {
     logger.errorSpinner(
-      "export-state", 
+      "export-state",
       `Failed to export stack state: ${output}`
     );
     return null;
@@ -1114,12 +1114,12 @@ async function exportStackState(stack: string, workspacePath: string): Promise<s
     const fileInfo = await Deno.stat(statePath);
     const fileSizeKB = Math.round(fileInfo.size / 1024);
     logger.successSpinner(
-      "export-state", 
+      "export-state",
       `Successfully exported stack state (${fileSizeKB} KB) to ${statePath}`
     );
   } catch {
     logger.successSpinner(
-      "export-state", 
+      "export-state",
       `Successfully exported stack state to ${statePath}`
     );
   }
@@ -1132,18 +1132,18 @@ async function exportStackState(stack: string, workspacePath: string): Promise<s
  */
 async function loginToS3Backend(bucket: string, region: string, dynamoDBTable?: string): Promise<boolean> {
   logger.startSpinner("s3-login", `Switching to S3 backend...`);
-  
+
   await executeCommand(["pulumi", "logout"], { silent: true });
 
   let loginUrl = `s3://${bucket}\?region=${region}`;
-  
+
   // Add DynamoDB table if specified
   if (dynamoDBTable) {
     loginUrl += `&dynamodb_table=${dynamoDBTable}`;
   }
 
   logger.updateSpinner("s3-login", `Logging into backend: ${loginUrl}...`);
-  
+
   const { success, output } = await executeCommand(
     ["pulumi", "login", loginUrl],
     { silent: true }
@@ -1151,14 +1151,14 @@ async function loginToS3Backend(bucket: string, region: string, dynamoDBTable?: 
 
   if (!success) {
     logger.errorSpinner(
-      "s3-login", 
+      "s3-login",
       `Failed to login to S3 backend: ${output}`
     );
     return false;
   }
 
   logger.successSpinner(
-    "s3-login", 
+    "s3-login",
     `Successfully logged into S3 backend: ${loginUrl}`
   );
   return true;
@@ -1168,30 +1168,30 @@ async function loginToS3Backend(bucket: string, region: string, dynamoDBTable?: 
  * Create a new stack in the S3 backend
  */
 async function createStackInS3(
-  stack: string, 
-  workspacePath: string, 
-  secretsProvider: string, 
-  secretsConfig: { 
-    passphrase?: string; 
-    kmsAlias?: string; 
+  stack: string,
+  workspacePath: string,
+  secretsProvider: string,
+  secretsConfig: {
+    passphrase?: string;
+    kmsAlias?: string;
     region: string;
   }
 ): Promise<boolean> {
   const [orgName, stackName] = stack.split('/');
   const displayName = stackName || stack;
-  
+
   logger.startSpinner(
-    "create-stack", 
+    "create-stack",
     `Creating stack "${displayName}" in S3 backend...`
   );
-  
+
   // Prepare command
   const initCommand = ["pulumi", "stack", "init"];
-  
+
   // Use just the stack name part if org is present
   initCommand.push(stackName || stack);
   initCommand.push("--non-interactive");
-  
+
   // Configure secrets provider
   if (secretsProvider === "passphrase") {
     // For passphrase secrets provider
@@ -1206,11 +1206,11 @@ async function createStackInS3(
     // For AWS KMS secrets provider
     const kmsAlias = secretsConfig.kmsAlias || "alias/pulumi-secrets";
     const region = secretsConfig.region;
-    
+
     // Build the awskms:// URL
     const kmsKeyId = kmsAlias.startsWith("alias/") ? kmsAlias : `alias/${kmsAlias}`;
     const secretsProviderUrl = `awskms://${kmsKeyId}?region=${region}`;
-    
+
     initCommand.push("--secrets-provider", secretsProviderUrl);
     logger.debug(`Using AWS KMS for secrets encryption: ${secretsProviderUrl}`);
   } else if (secretsProvider !== "default") {
@@ -1218,12 +1218,12 @@ async function createStackInS3(
     initCommand.push("--secrets-provider", secretsProvider);
     logger.debug(`Using custom secrets provider: ${secretsProvider}`);
   }
-  
+
   // If org name is present, try to add organization flag
   if (orgName && stackName) {
     initCommand.push("--organization", orgName);
   }
-  
+
   const { success, output } = await executeCommand(
     initCommand,
     { cwd: workspacePath, silent: true }
@@ -1233,9 +1233,9 @@ async function createStackInS3(
     // If organization flag fails, try without it
     if (orgName && stackName) {
       logger.debug(`Failed to create stack with organization. Trying without organization flag...`);
-      
+
       const fallbackCommand = ["pulumi", "stack", "init", stackName, "--non-interactive"];
-      
+
       // Add the secrets provider if specified
       if (secretsProvider === "awskms") {
         const kmsAlias = secretsConfig.kmsAlias || "alias/pulumi-secrets";
@@ -1247,22 +1247,22 @@ async function createStackInS3(
       } else if (secretsProvider !== "default") {
         fallbackCommand.push("--secrets-provider", secretsProvider);
       }
-      
+
       const { success: fallbackSuccess } = await executeCommand(
         fallbackCommand,
         { cwd: workspacePath, silent: true }
       );
-      
+
       if (!fallbackSuccess) {
         logger.errorSpinner(
-          "create-stack", 
+          "create-stack",
           `Failed to create stack in S3 backend: ${output}`
         );
         return false;
       }
     } else {
       logger.errorSpinner(
-        "create-stack", 
+        "create-stack",
         `Failed to create stack in S3 backend: ${output}`
       );
       return false;
@@ -1270,7 +1270,7 @@ async function createStackInS3(
   }
 
   logger.successSpinner(
-    "create-stack", 
+    "create-stack",
     `Successfully created stack "${displayName}" in S3 backend`
   );
   return true;
@@ -1282,12 +1282,12 @@ async function createStackInS3(
 async function importStackState(stack: string, statePath: string, workspacePath: string): Promise<boolean> {
   const [orgName, stackName] = stack.split('/');
   const displayName = stackName || stack;
-  
+
   logger.startSpinner(
-    "import-state", 
+    "import-state",
     `Importing stack state to "${displayName}" in S3 backend...`
   );
-  
+
   const { success, output } = await executeCommand(
     ["pulumi", "stack", "import", "--stack", stackName || stack, "--file", statePath],
     { cwd: workspacePath, silent: true }
@@ -1295,14 +1295,14 @@ async function importStackState(stack: string, statePath: string, workspacePath:
 
   if (!success) {
     logger.errorSpinner(
-      "import-state", 
+      "import-state",
       `Failed to import stack state: ${output}`
     );
     return false;
   }
 
   logger.successSpinner(
-    "import-state", 
+    "import-state",
     `Successfully imported stack state to "${displayName}"`
   );
   return true;
@@ -1314,12 +1314,12 @@ async function importStackState(stack: string, statePath: string, workspacePath:
 async function verifyMigration(stack: string, workspacePath: string): Promise<boolean> {
   const [orgName, stackName] = stack.split('/');
   const displayName = stackName || stack;
-  
+
   logger.startSpinner(
-    "verify", 
+    "verify",
     `Verifying stack migration (expecting no changes)...`
   );
-  
+
   const { success, output } = await executeCommand(
     ["pulumi", "preview", "--stack", stackName || stack, "--diff"],
     { cwd: workspacePath, silent: true }
@@ -1328,7 +1328,7 @@ async function verifyMigration(stack: string, workspacePath: string): Promise<bo
   // More robust change detection
   const hasChanges = (
     // Check for direct change indicators
-    // Also check newer format with resources summary section 
+    // Also check newer format with resources summary section
     output.includes("+ ") && output.match(/\+\s+\d+\s+to create/) ||
     output.includes("~ ") && output.match(/~\s+\d+\s+to update/) ||
     output.includes("- ") && output.match(/-\s+\d+\s+to delete/)
@@ -1336,10 +1336,10 @@ async function verifyMigration(stack: string, workspacePath: string): Promise<bo
 
   if (!success || hasChanges) {
     logger.errorSpinner(
-      "verify", 
+      "verify",
       `Verification failed: changes detected in the stack`
     );
-    
+
     // Print the changes if in verbose mode
     if (args.verbose) {
       logger.info(`Preview output:`);
@@ -1351,12 +1351,12 @@ async function verifyMigration(stack: string, workspacePath: string): Promise<bo
     } else {
       logger.info(`Run with --verbose to see details of the detected changes`);
     }
-    
+
     return false;
   }
 
   logger.successSpinner(
-    "verify", 
+    "verify",
     `Verification successful: no changes detected in the stack`
   );
   return true;
@@ -1365,39 +1365,42 @@ async function verifyMigration(stack: string, workspacePath: string): Promise<bo
 /**
  * Delete the source stack from Pulumi Cloud
  */
-async function deleteSourceStack(stack: string, workspacePath: string): Promise<boolean> {
+async function deleteSourceStack(stack: string, backendUrl: string ,workspacePath: string): Promise<boolean> {
   logger.startSpinner(
-    "delete-source", 
+    "delete-source",
     `Preparing to delete original stack "${stack}" from Pulumi Cloud...`
   );
-  
+
   // First, we need to log back into Pulumi Cloud
   await executeCommand(["pulumi", "logout"], { silent: true });
   await executeCommand(["pulumi", "login"], { silent: true });
-  
+
   logger.updateSpinner(
-    "delete-source", 
+    "delete-source",
     `Removing source stack "${stack}" from Pulumi Cloud...`
   );
-  
+
   // Force deletion with --yes
   const { success, output } = await executeCommand(
-    ["pulumi", "stack", "rm", "--stack", stack, "--yes"],
+    ["pulumi", "stack", "rm", "--stack", stack, "--force", "--yes"],
     { cwd: workspacePath, silent: true }
   );
 
   if (!success) {
     logger.errorSpinner(
-      "delete-source", 
+      "delete-source",
       `Failed to delete source stack: ${output}`
     );
     return false;
   }
 
   logger.successSpinner(
-    "delete-source", 
+    "delete-source",
     `Successfully deleted source stack "${stack}" from Pulumi Cloud`
   );
+
+  await executeCommand(["pulumi", "login", backendUrl], { silent: true });
+
   return true;
 }
 
@@ -1419,16 +1422,16 @@ async function cleanUpTempFiles(): Promise<void> {
  */
 async function migrateStack() {
   showBanner();
-  
+
   // =========================================================================
   // Step 1: Initial checks and setup
   // =========================================================================
   logger.section("PREREQUISITES");
-  
+
   // Check Pulumi CLI
   logger.startSpinner("check-pulumi", "Checking Pulumi CLI installation...");
   const pulumiInstalled = await checkPulumiInstalled();
-  
+
   if (!pulumiInstalled) {
     logger.errorSpinner("check-pulumi", "Pulumi CLI is not installed or not in PATH");
     logger.info(`Please install Pulumi CLI: https://www.pulumi.com/docs/install/`);
@@ -1436,14 +1439,14 @@ async function migrateStack() {
   } else {
     logger.successSpinner("check-pulumi", "Pulumi CLI is installed and working");
   }
-  
+
   // Check AWS credentials
   logger.startSpinner("check-aws", "Checking AWS credentials...");
   const awsConfigured = await checkAwsConfiguration();
   if (!awsConfigured) {
     logger.warningSpinner("check-aws", "AWS credentials are not properly configured");
     logger.info(`This might cause issues when accessing AWS resources. Make sure AWS credentials are set up correctly.`);
-    
+
     const proceed = await logger.confirm("Do you want to continue anyway?", false);
     if (!proceed) {
       logger.error("Migration aborted.");
@@ -1454,12 +1457,12 @@ async function migrateStack() {
   }
 
   // Extract arguments
-  const { 
-    stack, 
-    bucket, 
-    region, 
-    workspace, 
-    "delete-source": deleteSource, 
+  const {
+    stack,
+    bucket,
+    region,
+    workspace,
+    "delete-source": deleteSource,
     "skip-verify": skipVerify,
     "create-bucket": createBucketIfNotExists,
     "create-dynamodb": createDynamoDBIfNotExists,
@@ -1470,27 +1473,27 @@ async function migrateStack() {
     "create-kms": createKmsIfNotExists,
     "fix-permissions": fixPermissions
   } = args;
-  
+
   // Display migration plan
   logger.section("MIGRATION PLAN");
-  
+
   logger.info(`Source stack: ${bold(stack)}`);
   logger.info(`Target backend: ${bold(`s3://${bucket}?region=${region}${dynamoDBTable ? `&dynamodb_table=${dynamoDBTable}` : ''}`)}`);
   logger.info(`Secrets provider: ${bold(secretsProvider)}`);
   logger.info(`Workspace path: ${bold(workspace)}`);
-  
+
   // =========================================================================
   // Step 2: Set up infrastructure if needed
   // =========================================================================
   logger.section("INFRASTRUCTURE SETUP");
-  
+
   // Check if S3 bucket exists and create if needed
   logger.startSpinner("check-bucket", `Checking if S3 bucket "${bucket}" exists...`);
   const bucketExists = await checkS3BucketExists(bucket, region);
-  
+
   if (!bucketExists) {
     logger.warningSpinner("check-bucket", `S3 bucket "${bucket}" doesn't exist`);
-    
+
     if (createBucketIfNotExists) {
       const bucketCreated = await createS3Bucket(bucket, region);
       if (!bucketCreated) {
@@ -1505,20 +1508,20 @@ async function migrateStack() {
   } else {
     logger.successSpinner("check-bucket", `S3 bucket "${bucket}" already exists`);
   }
-  
+
   // Fix S3 bucket permissions if enabled
   if (fixPermissions) {
     await checkAndFixS3Permissions(bucket, region);
   }
-  
+
   // Check if DynamoDB table exists and create if needed
   if (dynamoDBTable) {
     logger.startSpinner("check-dynamo", `Checking if DynamoDB table "${dynamoDBTable}" exists...`);
     const tableExists = await checkDynamoDBTableExists(dynamoDBTable, region);
-    
+
     if (!tableExists) {
       logger.warningSpinner("check-dynamo", `DynamoDB table "${dynamoDBTable}" doesn't exist`);
-      
+
       if (createDynamoDBIfNotExists) {
         const tableCreated = await createDynamoDBTable(dynamoDBTable, region);
         if (!tableCreated) {
@@ -1533,18 +1536,18 @@ async function migrateStack() {
       logger.successSpinner("check-dynamo", `DynamoDB table "${dynamoDBTable}" already exists`);
     }
   }
-  
+
   // Handle KMS key for secrets if using AWS KMS
   let finalKmsAlias = kmsAlias;
   if (secretsProvider === "awskms") {
     const aliasName = kmsAlias.startsWith("alias/") ? kmsAlias : `alias/${kmsAlias}`;
-    
+
     logger.startSpinner("check-kms", `Checking if KMS alias "${aliasName}" exists...`);
     const kmsExists = await checkKmsAliasExists(aliasName, region);
-    
+
     if (!kmsExists) {
       logger.warningSpinner("check-kms", `KMS alias "${aliasName}" doesn't exist`);
-      
+
       if (createKmsIfNotExists) {
         const kmsCreated = await createKmsKeyAndAlias(aliasName, region);
         if (!kmsCreated) {
@@ -1576,20 +1579,20 @@ async function migrateStack() {
     // Set passphrase environment variable if using passphrase provider
     Deno.env.set("PULUMI_CONFIG_PASSPHRASE", passphrase);
   }
-  
+
   // =========================================================================
   // Step 3: Prepare stack details
   // =========================================================================
   logger.section("STACK MIGRATION");
-  
+
   // Migration steps
   let backendUrl = `s3://${bucket}?region=${region}`;
   if (dynamoDBTable) {
     backendUrl += `&dynamodb_table=${dynamoDBTable}`;
   }
-  
+
   logger.info(`Starting migration of stack "${stack}" to backend: ${backendUrl}`);
-  
+
   const secretsConfig = {
     passphrase: passphrase,
     kmsAlias: finalKmsAlias,
@@ -1598,42 +1601,42 @@ async function migrateStack() {
 
   // First, change the secrets provider for the stack
   await changeSecretProvider(stack, workspace, secretsProvider, secretsConfig);
-  
+
   // 1. Export stack state
   const statePath = await exportStackState(stack, workspace);
   if (!statePath) {
     logger.error(`Failed to export stack state. Migration aborted.`);
     Deno.exit(1);
   }
-  
+
   // 2. Login to S3 backend
   const s3LoginSuccess = await loginToS3Backend(bucket, region, dynamoDBTable);
   if (!s3LoginSuccess) {
     logger.error(`Failed to login to S3 backend. Migration aborted.`);
     Deno.exit(1);
   }
-  
+
   // 3. Create stack in S3 with proper secrets configuration
   const stackCreateSuccess = await createStackInS3(stack, workspace, secretsProvider, secretsConfig);
   if (!stackCreateSuccess) {
     logger.error(`Failed to create stack in S3. Migration aborted.`);
     Deno.exit(1);
   }
-  
+
   // 4. Import stack state
   const importSuccess = await importStackState(stack, statePath, workspace);
   if (!importSuccess) {
     logger.error(`Failed to import stack state. Migration aborted.`);
     Deno.exit(1);
   }
-  
+
   // 5. Verify migration
   if (!skipVerify) {
     const verificationSuccess = await verifyMigration(stack, workspace);
     if (!verificationSuccess) {
       logger.warning("⚠️ Migration verification failed. The stack state may not be identical.");
       logger.warning("You can still proceed but may need to manually resolve any discrepancies.");
-      
+
       // Ask for confirmation to continue
       const proceed = await logger.confirm("Do you want to continue with the migration?", false);
       if (!proceed) {
@@ -1647,16 +1650,16 @@ async function migrateStack() {
   } else {
     logger.warning("Skipping verification step as requested with --skip-verify flag");
   }
-  
+
   // 6. Delete source stack if requested
   if (deleteSource) {
     const shouldDelete = args.yes || await logger.confirm(
       `Are you sure you want to delete the source stack "${stack}" from Pulumi Cloud?`,
       false
     );
-    
+
     if (shouldDelete) {
-      const deleteSuccess = await deleteSourceStack(stack, workspace);
+      const deleteSuccess = await deleteSourceStack(stack, backendUrl, workspace);
       if (!deleteSuccess) {
         logger.warning("Failed to delete source stack, but migration was successful");
       }
@@ -1664,12 +1667,12 @@ async function migrateStack() {
       logger.info("Source stack deletion cancelled by user");
     }
   }
-  
+
   // 7. Clean up
   logger.startSpinner("cleanup", "Cleaning up temporary files...");
   await cleanUpTempFiles();
   logger.successSpinner("cleanup", "Temporary files cleaned up");
-  
+
   // Describe the secrets provider in the final message
   let secretsInfo = "";
   if (secretsProvider === "awskms") {
@@ -1677,16 +1680,16 @@ async function migrateStack() {
   } else if (secretsProvider === "passphrase") {
     secretsInfo = `\n   ${SYMBOLS.lock} Your stack is using passphrase encryption for secrets. Make sure to set PULUMI_CONFIG_PASSPHRASE in your environment.`;
   }
-  
+
   // =========================================================================
   // Step 8: Success and next steps
   // =========================================================================
   const [orgName, stackName] = stack.split('/');
   logger.section("MIGRATION COMPLETE");
-  
+
   logger.success(`Stack "${stack}" successfully migrated to backend: ${backendUrl}`);
   console.log();
-  
+
   // Final instructions
   console.log(`${bgGreen(black(" NEXT STEPS "))}
 

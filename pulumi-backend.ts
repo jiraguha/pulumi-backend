@@ -230,7 +230,7 @@ ${bold("OPTIONS:")}
     }
     
     // Pull latest changes
-    const { success: pullSuccess, output: pullOutput } = await executeCommand(["git", "pull"], { cwd: REPO_DIR });
+    const { success: pullSuccess, output: pullOutput } = await executeCommand(["git", "pull", "--force"], { cwd: REPO_DIR });
     if (!pullSuccess) {
       console.error(red(`Failed to pull updates: ${pullOutput}`));
       return false;

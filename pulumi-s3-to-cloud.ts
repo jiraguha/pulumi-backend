@@ -17,7 +17,7 @@ import { parse } from "https://deno.land/std/flags/mod.ts";
 import { join } from "https://deno.land/std/path/mod.ts";
 import { ensureDir } from "https://deno.land/std/fs/mod.ts";
 import { sprintf } from "https://deno.land/std/fmt/printf.ts";
-import { 
+import {
   bgGreen, bgBlue, bgYellow, bgRed, bgCyan,
   black, bold, italic, underline, dim, red, yellow, green, blue, cyan, magenta, white, gray
 } from "https://deno.land/std/fmt/colors.ts";
@@ -1008,7 +1008,7 @@ async function deleteSourceStack(
   
   // Force deletion with --yes
   const { success, output } = await executeCommand(
-    ["pulumi", "stack", "rm", "--stack", stack, "--yes"],
+    ["pulumi", "stack", "rm", "--stack", stack,"--force", "--yes"],
     { cwd: workspacePath, silent: true }
   );
 
@@ -1024,6 +1024,10 @@ async function deleteSourceStack(
     "delete-source", 
     `Successfully deleted source stack "${stack}" from S3 backend`
   );
+
+  await executeCommand(["pulumi", "logout"], { silent: true });
+  await executeCommand(["pulumi", "login"], { silent: true });
+
   return true;
 }
 
