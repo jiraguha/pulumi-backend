@@ -1,4 +1,4 @@
-name: pulumi-migrate-test
+name: dummy-test-infra
 description: A minimal AWS TypeScript Pulumi program
 runtime:
   name: nodejs

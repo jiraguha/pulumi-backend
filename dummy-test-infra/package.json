@@ -1,5 +1,5 @@
 {
-    "name": "pulumi-migrate-test",
+    "name": "dummy-test-infra",
     "main": "index.ts",
     "devDependencies": {
         "@types/node": "^18",
