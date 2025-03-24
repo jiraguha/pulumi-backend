@@ -49,6 +49,12 @@ const COMMANDS = {
     description: "Update the Pulumi Backend Management Tool to the latest version",
     help: "pulumi-backend self-update [--tag <version>]"
   }
+  ,
+  "s3Login": {
+    script:  join(REPO_DIR, "pulumi-s3-login.ts"),
+    description: "Auto login pulumi to S3 backend",
+    help: "pulumi-backend s3Login"
+  }
 };
 
 // Extract command and arguments
@@ -77,6 +83,7 @@ ${bold("COMMANDS:")}
   cloudToS3    ${dim("Migrate from Pulumi Cloud to an S3 backend")}
   s3ToCloud    ${dim("Migrate from an S3 backend to Pulumi Cloud")}
   init         ${dim("Initialize a new Pulumi project with an S3 backend")}
+  s3Login      ${dim("Auto login pulumi to S3 backend")}
   self-update  ${dim("Update the Pulumi Backend Management Tool to the latest version")}
   help         ${dim("Show this help information")}
 
@@ -89,6 +96,9 @@ ${bold("EXAMPLES:")}
 
   ${green("# Initialize a new project with S3 backend")}
   pulumi-backend init --name=my-project --bucket=my-pulumi-state
+  
+  ${green("# Auto login pulumi to S3 backend")}
+  pulumi-backend s3Login
 
   ${green("# Update the tool to the latest version")}
   pulumi-backend self-update
@@ -244,6 +254,7 @@ ${bold("OPTIONS:")}
       "pulumi-backend.ts",
       "pulumi-cloud-to-s3.ts",
       "pulumi-s3-to-cloud.ts",
+      "pulumi-s3-login.ts",
       "pulumi-init.ts"
     ];
     

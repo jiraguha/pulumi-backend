@@ -118,9 +118,9 @@ function showBanner() {
 
   console.log(
     `
-${bgBlue(black(" PULUMI "))}${bgCyan(black(" MIGRATION "))}${bgGreen(black(" TOOL "))} ${cyan("v1.0.0")}
+${bgBlue(black(" PULUMI "))}${bgCyan(black(" S3 "))}${bgGreen(black(" MIGRATION "))} ${cyan("v1.0.0")}
 
-${dim("A professional-grade tool to migrate Pulumi stacks from Pulumi Cloud to an S3 backend.")}
+${dim("Migrate Pulumi stacks from Pulumi Cloud to an S3 backend.")}
 `);
 }
 

@@ -119,7 +119,7 @@ function showBanner() {
     `
 ${bgBlue(black(" PULUMI "))}${bgCyan(black(" S3 "))}${bgGreen(black(" INITIALIZER "))} ${cyan("v1.0.0")}
 
-${dim("A professional-grade tool to set up Pulumi projects with an S3 backend.")}
+${dim("Set up Pulumi projects with an S3 backend.")}
 `);
 }
 

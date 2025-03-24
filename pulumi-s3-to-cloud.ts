@@ -116,7 +116,7 @@ function showBanner() {
     `
 ${bgBlue(black(" PULUMI "))}${bgCyan(black(" CLOUD "))}${bgGreen(black(" MIGRATION "))} ${cyan("v1.0.0")}
 
-${dim("A professional-grade tool to migrate Pulumi stacks from S3 backend to Pulumi Cloud.")}
+${dim("Migrate Pulumi stacks from S3 backend to Pulumi Cloud.")}
 `);
 }
 
@@ -1169,7 +1169,6 @@ async function migrateStack() {
   logger.section("SELECTING BACKEND");
 
   let projectName = ""
-  logger.section("PROJECT CONFIGURATION");
   // Check existing project
   const projectExists = await checkPulumiProjectExists();
   // Interactive configuration if project doesn't exist
