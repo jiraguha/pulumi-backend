@@ -16,7 +16,7 @@
 import { parse } from "https://deno.land/std/flags/mod.ts";
 import { join, basename } from "https://deno.land/std/path/mod.ts";
 import { ensureDir } from "https://deno.land/std/fs/mod.ts";
-import { 
+import {
   bgGreen, bgBlue, bgYellow, bgRed, bgCyan,
   black, bold, italic, underline, dim, red, yellow, green, blue, cyan, magenta, white, gray
 } from "https://deno.land/std/fmt/colors.ts";
@@ -31,8 +31,7 @@ import  Spinner  from "https://deno.land/x/cli_spinners@v0.0.3/mod.ts";
 // Get current directory name to use as default project name and bucket name
 const currentDir = basename(Deno.cwd());
 const defaultProjectName = currentDir.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-const defaultBucketName = `pulumi-state-${defaultProjectName}-${Math.floor(Math.random() * 10000)}`;
-
+const statePrefix = "";
 // Define command line arguments
 const args = parse(Deno.args, {
   string: [
@@ -218,7 +217,7 @@ class Logger {
       console.log();
       console.log(
         this.formatMessage(
-          bgBlue(black(` ${title.toUpperCase()} `)), 
+          bgBlue(black(` ${title.toUpperCase()} `)),
           ""
         )
       );
@@ -254,7 +253,7 @@ class Logger {
   endTimer(id: string): number {
     const start = this.timestamps.get(id);
     if (!start) return 0;
-    
+
     const elapsed = performance.now() - start;
     this.timestamps.delete(id);
     return elapsed;
@@ -269,14 +268,14 @@ class Logger {
         message: this.formatMessage(message, ""),
         color: "cyan"
       });
-      
+
       this.spinners.set(id, spinner);
       spinner.start();
     } else {
       // Just log the message without a spinner in quiet mode
       this.info(message);
     }
-    
+
     // Start a timer regardless of spinner
     this.startTimer(id);
   }
@@ -299,7 +298,7 @@ class Logger {
   successSpinner(id: string, message: string): void {
     const elapsed = this.endTimer(id);
     const elapsedText = elapsed ? ` ${dim(`(${(elapsed/1000).toFixed(1)}s)`)}` : '';
-    
+
     if (this.logLevel <= LogLevel.SUCCESS && !args.quiet) {
       const spinner = this.spinners.get(id);
       if (spinner) {
@@ -318,7 +317,7 @@ class Logger {
   warningSpinner(id: string, message: string): void {
     const elapsed = this.endTimer(id);
     const elapsedText = elapsed ? ` ${dim(`(${(elapsed/1000).toFixed(1)}s)`)}` : '';
-    
+
     if (this.logLevel <= LogLevel.WARNING && !args.quiet) {
       const spinner = this.spinners.get(id);
       if (spinner) {
@@ -337,7 +336,7 @@ class Logger {
   errorSpinner(id: string, message: string): void {
     const elapsed = this.endTimer(id);
     const elapsedText = elapsed ? ` ${dim(`(${(elapsed/1000).toFixed(1)}s)`)}` : '';
-    
+
     if (this.logLevel <= LogLevel.ERROR && !args.quiet) {
       const spinner = this.spinners.get(id);
       if (spinner) {
@@ -360,18 +359,18 @@ class Logger {
         const values = [h.length, ...rows.map(r => r[i]?.length || 0)];
         return Math.max(...values);
       });
-      
+
       // Print header
       const header = headers.map((h, i) => h.padEnd(colWidths[i])).join(" | ");
       console.log(this.formatMessage(bold(header), " "));
-      
+
       // Print separator
       const separator = colWidths.map(w => "─".repeat(w)).join("─┼─");
       console.log(this.formatMessage(`${separator}`, " "));
-      
+
       // Print rows
       for (const row of rows) {
-        const formattedRow = row.map((cell, i) => 
+        const formattedRow = row.map((cell, i) =>
           (cell || "").padEnd(colWidths[i])
         ).join(" | ");
         console.log(this.formatMessage(formattedRow, " "));
@@ -386,10 +385,10 @@ class Logger {
   async confirm(question: string, defaultYes = false): Promise<boolean> {
     if (args.yes) return true;
     if (!args.interactive) return defaultYes;
-    
+
     const suffix = defaultYes ? " (Y/n): " : " (y/N): ";
     const response = prompt(this.formatMessage(question + suffix, SYMBOLS.pending));
-    
+
     if (response === null || response === "") return defaultYes;
     return /^y(es)?$/i.test(response);
   }
@@ -399,10 +398,10 @@ class Logger {
    */
   async prompt(question: string, defaultValue: string = ""): Promise<string> {
     if (!args.interactive) return defaultValue;
-    
+
     const defaultText = defaultValue ? ` (default: ${defaultValue})` : '';
     const response = prompt(this.formatMessage(`${question}${defaultText}: `, SYMBOLS.pending));
-    
+
     if (response === null || response === "") return defaultValue;
     return response;
   }
@@ -412,25 +411,25 @@ class Logger {
    */
   async select(question: string, options: string[], defaultIndex: number = 0): Promise<string> {
     if (!args.interactive) return options[defaultIndex];
-    
+
     console.log(this.formatMessage(`${question}:`, SYMBOLS.pending));
     this.indent();
-    
+
     options.forEach((option, index) => {
       const indicator = index === defaultIndex ? `${green('>')} ` : '  ';
       console.log(this.formatMessage(`${indicator}${index + 1}. ${option}`, ""));
     });
-    
+
     this.outdent();
     const response = prompt(this.formatMessage(`Enter selection (1-${options.length}) [${defaultIndex + 1}]: `, ""));
-    
+
     if (response === null || response === "") return options[defaultIndex];
-    
+
     const selectedIndex = parseInt(response) - 1;
     if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= options.length) {
       return options[defaultIndex];
     }
-    
+
     return options[selectedIndex];
   }
 }
@@ -1250,7 +1249,7 @@ async function initializePulumiS3Project() {
   
   // Bucket name (default: derived from project name)
   if (!bucketName) {
-    const suggestedBucketName = `pulumi-state-${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${Math.floor(Math.random() * 10000)}`;
+    const suggestedBucketName = `${statePrefix}${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
     
     if (args.interactive) {
       bucketName = await logger.prompt("S3 bucket name for state storage", suggestedBucketName);

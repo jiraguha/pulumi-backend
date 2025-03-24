@@ -14,9 +14,8 @@
  */
 
 import { parse } from "https://deno.land/std/flags/mod.ts";
-import { join } from "https://deno.land/std/path/mod.ts";
+import { join, basename} from "https://deno.land/std/path/mod.ts";
 import { ensureDir } from "https://deno.land/std/fs/mod.ts";
-import { sprintf } from "https://deno.land/std/fmt/printf.ts";
 import {
   bgGreen, bgBlue, bgYellow, bgRed, bgCyan,
   black, bold, italic, underline, dim, red, yellow, green, blue, cyan, magenta, white, gray
@@ -28,7 +27,10 @@ import Spinner from "https://deno.land/x/cli_spinners@v0.0.3/mod.ts";
 // =============================================================================
 // CLI Configuration
 // =============================================================================
-
+const currentDir = basename(Deno.cwd());
+const defaultProjectName = currentDir.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+const statePrefix = "";
+const defaultRegion = Deno.env.get("AWS_REGION") || "eu-west-3";
 // Define command line arguments
 const args = parse(Deno.args, {
   string: [
@@ -387,6 +389,47 @@ class Logger {
     if (response === null || response === "") return defaultYes;
     return /^y(es)?$/i.test(response);
   }
+
+
+  /**
+   * Ask for text input with a default value
+   */
+  async prompt(question: string, defaultValue: string = ""): Promise<string> {
+    if (!args.interactive) return defaultValue;
+
+    const defaultText = defaultValue ? ` (default: ${defaultValue})` : '';
+    const response = prompt(this.formatMessage(`${question}${defaultText}: `, SYMBOLS.pending));
+
+    if (response === null || response === "") return defaultValue;
+    return response;
+  }
+
+  /**
+   * Ask to select from a list of options
+   */
+  async select(question: string, options: string[], defaultIndex: number = 0): Promise<string> {
+    if (!args.interactive) return options[defaultIndex];
+
+    console.log(this.formatMessage(`${question}:`, SYMBOLS.pending));
+    this.indent();
+
+    options.forEach((option, index) => {
+      const indicator = index === defaultIndex ? `${green('>')} ` : '  ';
+      console.log(this.formatMessage(`${indicator}${index + 1}. ${option}`, ""));
+    });
+
+    this.outdent();
+    const response = prompt(this.formatMessage(`Enter selection (1-${options.length}) [${defaultIndex + 1}]: `, ""));
+
+    if (response === null || response === "") return options[defaultIndex];
+
+    const selectedIndex = parseInt(response) - 1;
+    if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= options.length) {
+      return options[defaultIndex];
+    }
+
+    return options[selectedIndex];
+  }
 }
 
 // Create a global logger instance
@@ -574,29 +617,29 @@ ${bold("EXAMPLES:")}
   ${green("# Basic migration")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-cloud-migrate.ts \\
     --stack=dev \\
-    --backend=s3://my-pulumi-state?region=us-west-2
+    --organization=acme-corp
 
-  ${green("# With organization specified")}
+  ${green("# With backend specified")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-cloud-migrate.ts \\
     --stack=dev \\
-    --backend=s3://my-pulumi-state?region=us-west-2 \\
-    --organization=acme-corp
+    --organization=acme-corp \\
+    --backend=s3://my-pulumi-state?region=us-west-2
 
   ${green("# With passphrase for decrypting source secrets")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-cloud-migrate.ts \\
     --stack=dev \\
-    --backend=s3://my-pulumi-state?region=us-west-2 \\
+    --organization=acme-corp
     --passphrase=my-secret-passphrase
 `);
 }
 
 // Show help if requested or missing required arguments
-if (args.help || !args.stack || !args.backend) {
+if (args.help || !args.stack || !args.organization) {
   showHelp();
   if (args.help) {
     Deno.exit(0);
   } else {
-    console.error(red("Error: Missing required arguments (--stack and --backend)"));
+    console.error(red("Error: Missing required arguments (--stack and --organization)"));
     Deno.exit(1);
   }
 }
@@ -644,6 +687,18 @@ async function checkAwsConfiguration(): Promise<boolean> {
     return false;
   }
 }
+/**
+ * Check if Pulumi project exists in the current directory
+ */
+async function checkPulumiProjectExists(): Promise<boolean> {
+  try {
+    await Deno.stat("Pulumi.yaml");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 
 /**
  * Login to S3 backend
@@ -1086,7 +1141,7 @@ async function migrateStack() {
   // Extract arguments
   const { 
     stack, 
-    backend,
+    backend : providedBackend,
     workspace, 
     "delete-source": deleteSource, 
     "skip-verify": skipVerify,
@@ -1094,19 +1149,77 @@ async function migrateStack() {
     organization,
     "access-token": accessToken
   } = args;
-  
+  let backend = providedBackend;
   // Parse the S3 backend URL
-  const backendConfig = parseS3BackendUrl(backend);
-  
+
   // Display migration plan
   logger.section("MIGRATION PLAN");
-  
-  logger.info(`Source backend: ${bold(backend)}`);
+  if (backend) {
+    parseS3BackendUrl(backend);
+    logger.info(`Source backend: ${bold(backend)}`);
+  }
   logger.info(`Source stack: ${bold(stack)}`);
   logger.info(`Target backend: ${bold("Pulumi Cloud")}`);
   logger.info(`Target organization: ${bold(organization || "Default")}`);
   logger.info(`Workspace path: ${bold(workspace)}`);
-  
+
+  // =========================================================================
+  // Step 3: Select Backend
+  // =========================================================================
+  logger.section("SELECTING BACKEND");
+
+  let projectName = ""
+  logger.section("PROJECT CONFIGURATION");
+  // Check existing project
+  const projectExists = await checkPulumiProjectExists();
+  // Interactive configuration if project doesn't exist
+  if (!projectExists) {
+    projectName = defaultProjectName;
+  } else {
+    logger.info(`Existing Pulumi project found in current directory`);
+
+    // Try to get project name from existing Pulumi.yaml
+    try {
+      const pulumiYaml = await Deno.readTextFile("Pulumi.yaml");
+      const nameMatch = pulumiYaml.match(/name:\s*(.*)/);
+      if (nameMatch && nameMatch[1]) {
+        projectName = nameMatch[1].trim();
+        logger.info(`Using existing project name: ${bold(projectName)}`);
+      }
+    } catch (error) {
+      logger.debug(`Error reading Pulumi.yaml: ${error.message}`);
+    }
+
+    if (!projectName) {
+      projectName = defaultProjectName;
+    }
+  }
+  // Bucket name (default: derived from project name)
+  if (!backend) {
+    const suggestedBucketName = `${statePrefix}${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
+
+    if (args.interactive) {
+      let bucketName = await logger.prompt("S3 bucket name for state storage", suggestedBucketName);
+      const regions = [
+        "us-east-1", "us-east-2", "us-west-1", "us-west-2",
+        "eu-west-1", "eu-west-2", "eu-west-3", "eu-central-1",
+        "ap-northeast-1", "ap-northeast-2", "ap-southeast-1", "ap-southeast-2"
+      ];
+      let region = await logger.select(
+          "Select AWS region",
+          regions,
+          regions.indexOf(defaultRegion) !== -1 ? regions.indexOf(defaultRegion) : 0
+      );
+      backend = `s3://${bucketName}\?region=${region}`
+    } else {
+      let bucketName = suggestedBucketName;
+      backend = `s3://${bucketName}`
+      logger.info(`Using generated bucket name: ${bold(bucketName)}`);
+    }
+  }
+
+
+
   // =========================================================================
   // Step 2: Login to S3 backend
   // =========================================================================

@@ -14,9 +14,8 @@
  */
 
 import { parse } from "https://deno.land/std/flags/mod.ts";
-import { join } from "https://deno.land/std/path/mod.ts";
+import { join, basename } from "https://deno.land/std/path/mod.ts";
 import { ensureDir } from "https://deno.land/std/fs/mod.ts";
-import { sprintf } from "https://deno.land/std/fmt/printf.ts";
 import {
   bgGreen, bgBlue, bgYellow, bgRed, bgCyan,
   black, bold, italic, underline, dim, red, yellow, green, blue, cyan, magenta, white, gray
@@ -29,6 +28,10 @@ import  Spinner  from "https://deno.land/x/cli_spinners@v0.0.3/mod.ts";
 // CLI Configuration
 // =============================================================================
 
+// Get current directory name to use as default project name and bucket name
+const currentDir = basename(Deno.cwd());
+const defaultProjectName = currentDir.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+const statePrefix = "";
 // Define command line arguments
 const args = parse(Deno.args, {
   string: [
@@ -390,6 +393,19 @@ class Logger {
     if (response === null || response === "") return defaultYes;
     return /^y(es)?$/i.test(response);
   }
+  /**
+   * Ask for text input with a default value
+   */
+  async prompt(question: string, defaultValue: string = ""): Promise<string> {
+    if (!args.interactive) return defaultValue;
+
+    const defaultText = defaultValue ? ` (default: ${defaultValue})` : '';
+    const response = prompt(this.formatMessage(`${question}${defaultText}: `, SYMBOLS.pending));
+
+    if (response === null || response === "") return defaultValue;
+    return response;
+  }
+
 }
 
 // Create a global logger instance
@@ -506,9 +522,9 @@ ${bold("USAGE:")}
 
 ${bold("REQUIRED OPTIONS:")}
   -s, --stack=<name>        ${dim("Stack name to migrate")}
-  -b, --bucket=<name>       ${dim("S3 bucket name for backend storage")}
 
 ${bold("BACKEND OPTIONS:")}
+  -b, --bucket=<name>       ${dim("S3 bucket name for backend storage (default: generated from stack name)")}
   -r, --region=<region>     ${dim("AWS region for resources (default: from AWS_REGION or eu-west-3)")}
   -t, --dynamodb-table=<n>  ${dim("DynamoDB table name for state locking")}
   --create-bucket           ${dim("Create S3 bucket if it doesn't exist (default: true)")}
@@ -538,7 +554,12 @@ ${bold("HELP:")}
   -h, --help                ${dim("Show this help message")}
 
 ${bold("EXAMPLES:")}
-  ${green("# Basic migration")}
+  ${green("# Basic migration with auto-generated bucket name")}
+  deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
+    --stack=dev \\
+    --region=us-west-2
+
+  ${green("# With specific bucket")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
     --stack=dev \\
     --bucket=my-pulumi-state \\
@@ -547,14 +568,12 @@ ${bold("EXAMPLES:")}
   ${green("# With DynamoDB state locking")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
     --stack=dev \\
-    --bucket=my-pulumi-state \\
     --dynamodb-table=pulumi-state-lock \\
     --create-dynamodb
 
   ${green("# Using passphrase for secrets")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
     --stack=dev \\
-    --bucket=my-pulumi-state \\
     --secrets-provider=passphrase \\
     --passphrase=my-secret-passphrase
 
@@ -562,23 +581,20 @@ ${bold("EXAMPLES:")}
   for STACK in $(pulumi stack ls --json | jq -r '.[].name'); do \\
     deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
       --stack=$STACK \\
-      --bucket=my-pulumi-state \\
       --yes
   done
 `);
 }
-
 // Show help if requested or missing required arguments
-if (args.help || !args.stack || !args.bucket) {
+if (args.help || !args.stack) {
   showHelp();
   if (args.help) {
     Deno.exit(0);
   } else {
-    console.error(red("Error: Missing required arguments (--stack and --bucket)"));
+    console.error(red("Error: Missing required argument (--stack)"));
     Deno.exit(1);
   }
 }
-
 // =============================================================================
 // Core Functionality
 // =============================================================================
@@ -640,6 +656,17 @@ async function getCurrentAwsIdentity(): Promise<string | null> {
   } catch (error) {
     logger.debug(`Failed to get AWS identity: ${error.message}`);
     return null;
+  }
+}
+/**
+ * Check if Pulumi project exists in the current directory
+ */
+async function checkPulumiProjectExists(): Promise<boolean> {
+  try {
+    await Deno.stat("Pulumi.yaml");
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -1459,7 +1486,7 @@ async function migrateStack() {
   // Extract arguments
   const {
     stack,
-    bucket,
+    bucket: providedBucket,
     region,
     workspace,
     "delete-source": deleteSource,
@@ -1478,10 +1505,54 @@ async function migrateStack() {
   logger.section("MIGRATION PLAN");
 
   logger.info(`Source stack: ${bold(stack)}`);
-  logger.info(`Target backend: ${bold(`s3://${bucket}?region=${region}${dynamoDBTable ? `&dynamodb_table=${dynamoDBTable}` : ''}`)}`);
+  if(providedBucket) {
+    logger.info(`Target backend: ${bold(`s3://${providedBucket}?region=${region}${dynamoDBTable ? `&dynamodb_table=${dynamoDBTable}` : ''}`)}`);
+  }
   logger.info(`Secrets provider: ${bold(secretsProvider)}`);
   logger.info(`Workspace path: ${bold(workspace)}`);
 
+  // =========================================================================
+  // Step 2: Interactive project configuration
+  // =========================================================================
+  let projectName = ""
+  logger.section("PROJECT CONFIGURATION");
+  // Check existing project
+  const projectExists = await checkPulumiProjectExists();
+  // Interactive configuration if project doesn't exist
+  if (!projectExists) {
+      projectName = defaultProjectName;
+  } else {
+    logger.info(`Existing Pulumi project found in current directory`);
+
+    // Try to get project name from existing Pulumi.yaml
+    try {
+      const pulumiYaml = await Deno.readTextFile("Pulumi.yaml");
+      const nameMatch = pulumiYaml.match(/name:\s*(.*)/);
+      if (nameMatch && nameMatch[1]) {
+        projectName = nameMatch[1].trim();
+        logger.info(`Using existing project name: ${bold(projectName)}`);
+      }
+    } catch (error) {
+      logger.debug(`Error reading Pulumi.yaml: ${error.message}`);
+    }
+
+    if (!projectName) {
+      projectName = defaultProjectName;
+    }
+  }
+
+  let bucket = providedBucket;
+  // Bucket name (default: derived from project name)
+  if (!bucket) {
+    const suggestedBucketName = `${statePrefix}${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`;
+
+    if (args.interactive) {
+      bucket = await logger.prompt("S3 bucket name for state storage", suggestedBucketName);
+    } else {
+      bucket = suggestedBucketName;
+      logger.info(`Using generated bucket name: ${bold(bucket)}`);
+    }
+  }
   // =========================================================================
   // Step 2: Set up infrastructure if needed
   // =========================================================================
