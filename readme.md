@@ -85,9 +85,7 @@ pulumi-backend self-update
 pulumi-backend cloudToS3 \
   --stack=mystack \
   --bucket=my-pulumi-state \
-  --region=us-west-2 \
-  --dynamodb-table=pulumi-state-lock \
-  --create-dynamodb
+  --region=us-west-2 
 ```
 
 ### Cloud to S3 with KMS Encryption
@@ -137,9 +135,7 @@ pulumi-backend init
 |--------|-------------|
 | `--bucket` | S3 bucket name for backend storage (required) |
 | `--region` | AWS region for resources (default: from AWS_REGION) |
-| `--dynamodb-table` | DynamoDB table name for state locking |
 | `--create-bucket` | Create S3 bucket if it doesn't exist (default: true) |
-| `--create-dynamodb` | Create DynamoDB table if it doesn't exist (default: false) |
 | `--secrets-provider` | Secrets provider: 'passphrase', 'awskms', 'default' |
 | `--passphrase` | Passphrase for secrets encryption |
 | `--kms-alias` | KMS key alias for secrets (default: alias/pulumi-secrets) |

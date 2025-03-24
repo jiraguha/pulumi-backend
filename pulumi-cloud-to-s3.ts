@@ -35,11 +35,11 @@ const statePrefix = "";
 // Define command line arguments
 const args = parse(Deno.args, {
   string: [
-    "stack", "bucket", "region", "workspace", "encryption-key", "dynamodb-table",
+    "stack", "bucket", "region", "workspace", "encryption-key",
     "passphrase", "kms-alias", "secrets-provider", "output-format"
   ],
   boolean: [
-    "help", "delete-source", "skip-verify", "verbose", "create-bucket", "create-dynamodb",
+    "help", "delete-source", "skip-verify", "verbose", "create-bucket",
     "create-kms", "quiet", "yes", "no-color", "interactive"
   ],
   alias: {
@@ -51,7 +51,6 @@ const args = parse(Deno.args, {
     d: "delete-source",
     v: "verbose",
     k: "encryption-key",
-    t: "dynamodb-table",
     p: "passphrase",
     a: "kms-alias",
     y: "yes",
@@ -65,7 +64,6 @@ const args = parse(Deno.args, {
     "delete-source": false,
     "skip-verify": false,
     "create-bucket": true,
-    "create-dynamodb": false,
     "create-kms": true,
     "kms-alias": "alias/pulumi-secrets",
     "secrets-provider": "awskms",
@@ -526,9 +524,7 @@ ${bold("REQUIRED OPTIONS:")}
 ${bold("BACKEND OPTIONS:")}
   -b, --bucket=<name>       ${dim("S3 bucket name for backend storage (default: generated from stack name)")}
   -r, --region=<region>     ${dim("AWS region for resources (default: from AWS_REGION or eu-west-3)")}
-  -t, --dynamodb-table=<n>  ${dim("DynamoDB table name for state locking")}
   --create-bucket           ${dim("Create S3 bucket if it doesn't exist (default: true)")}
-  --create-dynamodb         ${dim("Create DynamoDB table if it doesn't exist (default: false)")}
   --no-create-bucket        ${dim("Don't create S3 bucket if it doesn't exist")}
 
 ${bold("SECRETS OPTIONS:")}
@@ -564,12 +560,6 @@ ${bold("EXAMPLES:")}
     --stack=dev \\
     --bucket=my-pulumi-state \\
     --region=us-west-2
-
-  ${green("# With DynamoDB state locking")}
-  deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
-    --stack=dev \\
-    --dynamodb-table=pulumi-state-lock \\
-    --create-dynamodb
 
   ${green("# Using passphrase for secrets")}
   deno run --allow-run --allow-read --allow-write --allow-env pulumi-migrate.ts \\
@@ -884,81 +874,6 @@ async function checkAndFixS3Permissions(bucket: string, region: string): Promise
 }
 
 /**
- * Create DynamoDB table for state locking
- */
-async function createDynamoDBTable(tableName: string, region: string): Promise<boolean> {
-  logger.startSpinner(
-    "create-dynamo",
-    `Creating DynamoDB table "${tableName}" for Pulumi state locking...`
-  );
-
-  try {
-    // 1. Create DynamoDB table
-    const { success: tableCreated } = await executeCommand([
-      "aws", "dynamodb", "create-table",
-      "--table-name", tableName,
-      "--attribute-definitions", "AttributeName=LockID,AttributeType=S",
-      "--key-schema", "AttributeName=LockID,KeyType=HASH",
-      "--provisioned-throughput", "ReadCapacityUnits=5,WriteCapacityUnits=5",
-      "--region", region
-    ], { silent: true });
-
-    if (!tableCreated) {
-      logger.errorSpinner(
-        "create-dynamo",
-        `Failed to create DynamoDB table "${tableName}"`
-      );
-      return false;
-    }
-
-    logger.updateSpinner(
-      "create-dynamo",
-      `Enabling point-in-time recovery for "${tableName}"...`
-    );
-
-    // 2. Enable point-in-time recovery
-    const { success: recoveryEnabled } = await executeCommand([
-      "aws", "dynamodb", "update-continuous-backups",
-      "--table-name", tableName,
-      "--point-in-time-recovery-specification", "PointInTimeRecoveryEnabled=true",
-      "--region", region
-    ], { silent: true });
-
-    if (!recoveryEnabled) {
-      logger.warningSpinner(
-        "create-dynamo",
-        `Created table but failed to enable point-in-time recovery for "${tableName}"`
-      );
-      return true;
-    }
-
-    logger.successSpinner(
-      "create-dynamo",
-      `DynamoDB table "${tableName}" created with point-in-time recovery enabled`
-    );
-    return true;
-  } catch (error) {
-    logger.errorSpinner("create-dynamo", `Failed to create DynamoDB table: ${error.message}`);
-    return false;
-  }
-}
-
-/**
- * Check if DynamoDB table exists
- */
-async function checkDynamoDBTableExists(tableName: string, region: string): Promise<boolean> {
-  try {
-    const { success } = await executeCommand(
-      ["aws", "dynamodb", "describe-table", "--table-name", tableName, "--region", region],
-      { silent: true }
-    );
-    return success;
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
  * Check if KMS alias exists
  */
 async function checkKmsAliasExists(alias: string, region: string): Promise<boolean> {
@@ -1157,17 +1072,12 @@ async function exportStackState(stack: string, workspacePath: string): Promise<s
 /**
  * Switch to S3 backend
  */
-async function loginToS3Backend(bucket: string, region: string, dynamoDBTable?: string): Promise<boolean> {
+async function loginToS3Backend(bucket: string, region: string): Promise<boolean> {
   logger.startSpinner("s3-login", `Switching to S3 backend...`);
 
   await executeCommand(["pulumi", "logout"], { silent: true });
 
   let loginUrl = `s3://${bucket}\?region=${region}`;
-
-  // Add DynamoDB table if specified
-  if (dynamoDBTable) {
-    loginUrl += `&dynamodb_table=${dynamoDBTable}`;
-  }
 
   logger.updateSpinner("s3-login", `Logging into backend: ${loginUrl}...`);
 
@@ -1492,8 +1402,6 @@ async function migrateStack() {
     "delete-source": deleteSource,
     "skip-verify": skipVerify,
     "create-bucket": createBucketIfNotExists,
-    "create-dynamodb": createDynamoDBIfNotExists,
-    "dynamodb-table": dynamoDBTable,
     "secrets-provider": secretsProvider,
     passphrase,
     "kms-alias": kmsAlias,
@@ -1506,7 +1414,7 @@ async function migrateStack() {
 
   logger.info(`Source stack: ${bold(stack)}`);
   if(providedBucket) {
-    logger.info(`Target backend: ${bold(`s3://${providedBucket}?region=${region}${dynamoDBTable ? `&dynamodb_table=${dynamoDBTable}` : ''}`)}`);
+    logger.info(`Target backend: ${bold(`s3://${providedBucket}?region=${region}`)}`);
   }
   logger.info(`Secrets provider: ${bold(secretsProvider)}`);
   logger.info(`Workspace path: ${bold(workspace)}`);
@@ -1585,29 +1493,6 @@ async function migrateStack() {
     await checkAndFixS3Permissions(bucket, region);
   }
 
-  // Check if DynamoDB table exists and create if needed
-  if (dynamoDBTable) {
-    logger.startSpinner("check-dynamo", `Checking if DynamoDB table "${dynamoDBTable}" exists...`);
-    const tableExists = await checkDynamoDBTableExists(dynamoDBTable, region);
-
-    if (!tableExists) {
-      logger.warningSpinner("check-dynamo", `DynamoDB table "${dynamoDBTable}" doesn't exist`);
-
-      if (createDynamoDBIfNotExists) {
-        const tableCreated = await createDynamoDBTable(dynamoDBTable, region);
-        if (!tableCreated) {
-          logger.error(`Failed to create DynamoDB table. Please create it manually or check your permissions.`);
-          logger.warning(`Continuing without state locking...`);
-        }
-      } else {
-        logger.warning(`DynamoDB table "${dynamoDBTable}" doesn't exist and --create-dynamodb is disabled.`);
-        logger.warning(`Continuing without state locking...`);
-      }
-    } else {
-      logger.successSpinner("check-dynamo", `DynamoDB table "${dynamoDBTable}" already exists`);
-    }
-  }
-
   // Handle KMS key for secrets if using AWS KMS
   let finalKmsAlias = kmsAlias;
   if (secretsProvider === "awskms") {
@@ -1658,9 +1543,6 @@ async function migrateStack() {
 
   // Migration steps
   let backendUrl = `s3://${bucket}?region=${region}`;
-  if (dynamoDBTable) {
-    backendUrl += `&dynamodb_table=${dynamoDBTable}`;
-  }
 
   logger.info(`Starting migration of stack "${stack}" to backend: ${backendUrl}`);
 
@@ -1681,7 +1563,7 @@ async function migrateStack() {
   }
 
   // 2. Login to S3 backend
-  const s3LoginSuccess = await loginToS3Backend(bucket, region, dynamoDBTable);
+  const s3LoginSuccess = await loginToS3Backend(bucket, region);
   if (!s3LoginSuccess) {
     logger.error(`Failed to login to S3 backend. Migration aborted.`);
     Deno.exit(1);

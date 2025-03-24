@@ -36,11 +36,11 @@ const statePrefix = "";
 const args = parse(Deno.args, {
   string: [
     "name", "description", "bucket", "region", "runtime", 
-    "template", "stack", "dynamodb-table", "kms-alias", 
+    "template", "stack", "kms-alias",
     "secrets-provider", "passphrase", "output-format"
   ],
   boolean: [
-    "help", "verbose", "create-bucket", "create-dynamodb", 
+    "help", "verbose", "create-bucket",
     "create-kms", "quiet", "yes", "no-color", "interactive"
   ],
   alias: {
@@ -64,7 +64,6 @@ const args = parse(Deno.args, {
     runtime: "typescript",
     stack: "dev",
     "create-bucket": true,
-    "create-dynamodb": false,
     "create-kms": true,
     "secrets-provider": "awskms",
     "kms-alias": "alias/pulumi-secrets",
@@ -555,9 +554,7 @@ ${bold("PROJECT OPTIONS:")}
 ${bold("BACKEND OPTIONS:")}
   -b, --bucket=<name>      ${dim("S3 bucket name (default: derived from project name)")}
   -r, --region=<region>    ${dim("AWS region for resources (default: from AWS_REGION or us-west-2)")}
-  --dynamodb-table=<name>  ${dim("DynamoDB table name for state locking")}
   --create-bucket          ${dim("Create S3 bucket if it doesn't exist (default: true)")}
-  --create-dynamodb        ${dim("Create DynamoDB table if it doesn't exist (default: false)")}
 
 ${bold("SECRETS OPTIONS:")}
   --secrets-provider=<type> ${dim("Secrets provider type: 'awskms', 'passphrase', 'default' (default: awskms)")}
@@ -585,13 +582,6 @@ ${bold("EXAMPLES:")}
     --name=my-infra \\
     --bucket=my-pulumi-state \\
     --region=us-east-1
-
-  ${green("# With DynamoDB state locking")}
-  deno run --allow-run --allow-read --allow-write --allow-env pulumi-init-s3.ts \\
-    --name=my-infra \\
-    --bucket=my-pulumi-state \\
-    --dynamodb-table=pulumi-state-lock \\
-    --create-dynamodb
 `);
 }
 
@@ -831,81 +821,6 @@ async function checkAndFixS3Permissions(bucket: string, region: string): Promise
 }
 
 /**
- * Create DynamoDB table for state locking
- */
-async function createDynamoDBTable(tableName: string, region: string): Promise<boolean> {
-  logger.startSpinner(
-    "create-dynamo", 
-    `Creating DynamoDB table "${tableName}" for Pulumi state locking...`
-  );
-  
-  try {
-    // 1. Create DynamoDB table
-    const { success: tableCreated } = await executeCommand([
-      "aws", "dynamodb", "create-table",
-      "--table-name", tableName,
-      "--attribute-definitions", "AttributeName=LockID,AttributeType=S",
-      "--key-schema", "AttributeName=LockID,KeyType=HASH",
-      "--provisioned-throughput", "ReadCapacityUnits=5,WriteCapacityUnits=5",
-      "--region", region
-    ], { silent: true });
-    
-    if (!tableCreated) {
-      logger.errorSpinner(
-        "create-dynamo", 
-        `Failed to create DynamoDB table "${tableName}"`
-      );
-      return false;
-    }
-    
-    logger.updateSpinner(
-      "create-dynamo", 
-      `Enabling point-in-time recovery for "${tableName}"...`
-    );
-
-    // 2. Enable point-in-time recovery
-    const { success: recoveryEnabled } = await executeCommand([
-      "aws", "dynamodb", "update-continuous-backups",
-      "--table-name", tableName,
-      "--point-in-time-recovery-specification", "PointInTimeRecoveryEnabled=true",
-      "--region", region
-    ], { silent: true });
-    
-    if (!recoveryEnabled) {
-      logger.warningSpinner(
-        "create-dynamo", 
-        `Created table but failed to enable point-in-time recovery for "${tableName}"`
-      );
-      return true;
-    }
-
-    logger.successSpinner(
-      "create-dynamo", 
-      `DynamoDB table "${tableName}" created with point-in-time recovery enabled`
-    );
-    return true;
-  } catch (error) {
-    logger.errorSpinner("create-dynamo", `Failed to create DynamoDB table: ${error.message}`);
-    return false;
-  }
-}
-
-/**
- * Check if DynamoDB table exists
- */
-async function checkDynamoDBTableExists(tableName: string, region: string): Promise<boolean> {
-  try {
-    const { success } = await executeCommand(
-      ["aws", "dynamodb", "describe-table", "--table-name", tableName, "--region", region],
-      { silent: true }
-    );
-    return success;
-  } catch (error) {
-    return false;
-  }
-}
-
-/**
  * Check if KMS alias exists
  */
 async function checkKmsAliasExists(alias: string, region: string): Promise<boolean> {
@@ -1035,17 +950,12 @@ async function initPulumiProject(name: string, description: string = "", templat
 /**
  * Switch to S3 backend
  */
-async function loginToS3Backend(bucket: string, region: string, dynamoDBTable?: string): Promise<boolean> {
+async function loginToS3Backend(bucket: string, region: string): Promise<boolean> {
   logger.startSpinner("s3-login", `Configuring S3 backend...`);
   
   await executeCommand(["pulumi", "logout"], { silent: true });
 
   let loginUrl = `s3://${bucket}\?region=${region}`;
-  
-  // Add DynamoDB table if specified
-  if (dynamoDBTable) {
-    loginUrl += `&dynamodb_table=${dynamoDBTable}`;
-  }
 
   logger.updateSpinner("s3-login", `Logging into backend: ${loginUrl}...`);
   
@@ -1189,7 +1099,6 @@ async function initializePulumiS3Project() {
   let stackName = args.stack || "dev";
   let bucketName = args.bucket || "";
   let region = args.region || "eu-west-3";
-  let dynamoDBTable = args["dynamodb-table"] || "";
   let secretsProvider = args["secrets-provider"] || "awskms";
   let kmsAlias = args["kms-alias"] || "alias/pulumi-secrets";
   let passphrase = args.passphrase || "";
@@ -1272,18 +1181,7 @@ async function initializePulumiS3Project() {
       regions.indexOf(region) !== -1 ? regions.indexOf(region) : 0
     );
   }
-  
-  // DynamoDB for state locking
-  if (!dynamoDBTable && args.interactive) {
-    const useDynamoDB = await logger.confirm("Use DynamoDB for state locking?", false);
-    if (useDynamoDB) {
-      dynamoDBTable = await logger.prompt(
-        "DynamoDB table name", 
-        `pulumi-state-lock-${projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`
-      );
-    }
-  }
-  
+
   // Secrets provider
   if (args.interactive) {
     secretsProvider = await logger.select(
@@ -1334,32 +1232,7 @@ async function initializePulumiS3Project() {
     // Check and fix permissions for existing bucket
     await checkAndFixS3Permissions(bucketName, region);
   }
-  
-  // Check if DynamoDB table exists and create if needed
-  if (dynamoDBTable) {
-    logger.startSpinner("check-dynamo", `Checking if DynamoDB table "${dynamoDBTable}" exists...`);
-    const tableExists = await checkDynamoDBTableExists(dynamoDBTable, region);
-    
-    if (!tableExists) {
-      logger.warningSpinner("check-dynamo", `DynamoDB table "${dynamoDBTable}" doesn't exist`);
-      
-      if (args["create-dynamodb"]) {
-        const tableCreated = await createDynamoDBTable(dynamoDBTable, region);
-        if (!tableCreated) {
-          logger.error(`Failed to create DynamoDB table. Please create it manually or check your permissions.`);
-          logger.warning(`Continuing without state locking...`);
-          dynamoDBTable = "";
-        }
-      } else {
-        logger.warning(`DynamoDB table "${dynamoDBTable}" doesn't exist and --create-dynamodb is disabled.`);
-        logger.warning(`Continuing without state locking...`);
-        dynamoDBTable = "";
-      }
-    } else {
-      logger.successSpinner("check-dynamo", `DynamoDB table "${dynamoDBTable}" already exists`);
-    }
-  }
-  
+
   // Handle KMS key for secrets if using AWS KMS
   let finalKmsAlias = kmsAlias;
   if (secretsProvider === "awskms") {
@@ -1399,8 +1272,8 @@ async function initializePulumiS3Project() {
   logger.section("PROJECT INITIALIZATION");
   
   // Login to S3 backend
-  const backendUrl = `s3://${bucketName}?region=${region}${dynamoDBTable ? `&dynamodb_table=${dynamoDBTable}` : ''}`;
-  const s3LoginSuccess = await loginToS3Backend(bucketName, region, dynamoDBTable);
+  const backendUrl = `s3://${bucketName}?region=${region}`;
+  const s3LoginSuccess = await loginToS3Backend(bucketName, region);
   
   if (!s3LoginSuccess) {
     logger.error(`Failed to configure S3 backend. Initialization aborted.`);

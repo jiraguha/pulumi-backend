@@ -34,7 +34,7 @@ const defaultRegion = Deno.env.get("AWS_REGION") || "eu-west-3";
 // Define command line arguments
 const args = parse(Deno.args, {
   string: [
-    "stack", "backend", "region", "workspace", "dynamodb-table", 
+    "stack", "backend", "region", "workspace",
     "passphrase", "kms-key", "secrets-provider", "output-format",
     "organization", "access-token"
   ],
@@ -546,7 +546,6 @@ async function executeCommand(
 function parseS3BackendUrl(backendUrl: string): {
   bucket: string;
   region: string;
-  dynamoDBTable?: string;
 } {
   try {
     // Handle s3:// URL format
@@ -565,9 +564,8 @@ function parseS3BackendUrl(backendUrl: string): {
     // Parse query params
     const params = new URLSearchParams(queryString || '');
     const region = params.get('region') || args.region;
-    const dynamoDBTable = params.get('dynamodb_table') || undefined;
-    
-    return { bucket, region, dynamoDBTable };
+
+    return { bucket, region };
   } catch (error) {
     logger.error(`Invalid S3 backend URL format: ${error.message}`);
     Deno.exit(1);
