@@ -1,85 +1,108 @@
 # Pulumi Backend Management Tool
 
-A CLI tool for managing Pulumi stacks across different backends, focusing on Cloud and S3.
+Elevate your Pulumi experience with our sleek and intuitive CLI tool for managing stacks across various backends, focusing on both Pulumi Cloud and Amazon S3. Designed for professionals who demand precision and efficiency, this tool offers seamless migrations, comprehensive infrastructure management, and robust secrets handling—all wrapped in a user-friendly interface.
 
-## Features
+## ✨ Features
 
-- **Complete Backend Management**: Supports all backend operations:
-  - **Migration**: Bidirectional transfers between Pulumi Cloud and S3
-  - **Initialization**: New project setup with S3 backend configured
-  - **Self-Update**: Easy tool updates via Git
-  
-- **Comprehensive Infrastructure**: Full support for AWS resources:
-  - **S3**: Secure bucket creation with versioning and encryption
-  - **DynamoDB**: State locking tables with point-in-time recovery
-  - **KMS**: Encryption key management for secrets
-  
-- **Secrets Management**: Robust handling of secrets across backends:
-  - **KMS**: AWS Key Management Service integration
-  - **Passphrase**: Simple password-based encryption
-  - **Service**: Pulumi Cloud hosted encryption
-  - **Default**: Local encryption
-  
-- **Professional UX**: Rich console experience:
-  - **Interactive UI**: Progress indicators and clear feedback
-  - **Smart Defaults**: Intelligent suggestions based on project context
-  - **Verification**: Built-in checks to ensure successful operations
+### **🔄 Complete Backend Management**
+- **Migration Made Simple**: Effortlessly transfer your Pulumi stacks between Pulumi Cloud and S3 backends.
+- **Initialization**: Quickly set up new projects with your preferred backend configurations.
+- **Self-Update**: Keep your tool up-to-date with the latest features and improvements via Git.
+- **Auto Login**: Seamlessly log into your S3 backend using the new `s3Login` command for streamlined workflows.
 
-## Installation
+### **🛠 Comprehensive Infrastructure Support**
+- **AWS Integration**:
+  - **S3**: Secure bucket creation with versioning and encryption.
+  - **DynamoDB**: Manage state locking tables with point-in-time recovery.
+  - **KMS**: Handle encryption key management seamlessly.
+- **Secrets Management**:
+  - **KMS**: Integrate with AWS Key Management Service for robust security.
+  - **Passphrase**: Utilize simple password-based encryption.
+  - **Service**: Leverage Pulumi Cloud hosted encryption options.
+  - **Default**: Rely on local encryption for straightforward setups.
 
-### One-Line Install
+### **🌟 Professional UX**
+- **Interactive UI**: Engage with progress indicators and clear, actionable feedback.
+- **Smart Defaults**: Benefit from intelligent suggestions tailored to your project context.
+- **Verification**: Utilize built-in checks to ensure successful and accurate operations.
+
+## 🚀 Installation
+
+### **🔥 One-Line Install**
+
+Quickly install the Pulumi Backend Management Tool using the following command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash
 ```
 
-### Installation Options
+### **🔧 Installation Options**
 
-Install a specific version:
+Specify installation parameters to customize your setup:
 
-```bash
-# Install from a specific branch
-curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash -s -- --branch dev
+- **Install a Specific Version**:
 
-# Install a specific tagged version
-curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash -s -- --tag v1.0.0
-```
+  ```bash
+  # Install from a specific branch
+  curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash -s -- --branch dev
 
-Install to a different directory:
+  # Install a specific tagged version
+  curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash -s -- --tag v1.0.0
+  ```
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash -s -- --dir ~/.local/bin
-```
+- **Install to a Different Directory**:
 
-## Basic Usage
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/jiraguha/pulumi-backend/main/install.sh | bash -s -- --dir ~/.local/bin
+  ```
 
-### Migrate from Pulumi Cloud to S3
+## 🎯 Basic Usage
+
+### **🔄 Migrate from Pulumi Cloud to S3**
+
+Seamlessly transfer your stack from Pulumi Cloud to an S3 backend:
 
 ```bash
 pulumi-backend cloudToS3 --stack=mystack --bucket=my-pulumi-state --region=us-west-2
 ```
 
-### Migrate from S3 to Pulumi Cloud
+### **🔄 Migrate from S3 to Pulumi Cloud**
+
+Easily switch your stack from an S3 backend back to Pulumi Cloud:
 
 ```bash
 pulumi-backend s3ToCloud --stack=mystack --backend=s3://my-pulumi-state?region=us-west-2
 ```
 
-### Initialize a New Project with S3 Backend
+### **🆕 Initialize a New Project with S3 Backend**
+
+Kickstart a new Pulumi project with S3 as your backend:
 
 ```bash
 pulumi-backend init --name=my-project --bucket=my-pulumi-state
 ```
 
-### Update the Tool
+### **🔄 Update the Tool**
+
+Keep your Pulumi Backend Management Tool up-to-date:
 
 ```bash
 pulumi-backend self-update
 ```
 
-## Advanced Usage
+### **🔐 Auto Login to S3 Backend**
 
-### Cloud to S3 with DynamoDB State Locking
+Automatically log into your S3 backend for streamlined operations:
+
+```bash
+pulumi-backend s3Login --bucket=my-pulumi-state --region=us-west-2
+```
+
+## 🛠 Advanced Usage
+
+### **🔄 Cloud to S3 with DynamoDB State Locking**
+
+Enhance your migration with DynamoDB state locking for improved consistency:
 
 ```bash
 pulumi-backend cloudToS3 \
@@ -88,7 +111,9 @@ pulumi-backend cloudToS3 \
   --region=us-west-2 
 ```
 
-### Cloud to S3 with KMS Encryption
+### **🔄 Cloud to S3 with KMS Encryption**
+
+Secure your secrets during migration using AWS KMS:
 
 ```bash
 pulumi-backend cloudToS3 \
@@ -98,7 +123,9 @@ pulumi-backend cloudToS3 \
   --kms-alias=alias/pulumi-secrets
 ```
 
-### S3 to Cloud with Organization and Default Secrets Provider
+### **🔄 S3 to Cloud with Organization and Default Secrets Provider**
+
+Migrate with organizational context and default secrets handling:
 
 ```bash
 pulumi-backend s3ToCloud \
@@ -108,80 +135,101 @@ pulumi-backend s3ToCloud \
   --secrets-provider=default
 ```
 
-### Initialize with Interactive Prompts
+### **🆕 Initialize with Interactive Prompts**
+
+Start a new project and configure settings interactively:
 
 ```bash
 pulumi-backend init
 ```
 
-## Options Reference
+### **🔐 Auto Login to S3 Backend**
 
-### Migration Common Options
+Streamline your workflow by automatically logging into your S3 backend:
 
-| Option | Description |
-|--------|-------------|
-| `--stack` | Stack name to migrate (required) |
-| `--workspace` | Path to Pulumi project (default: current directory) |
-| `--delete-source` | Delete the source stack after successful migration |
-| `--skip-verify` | Skip verification step |
-| `--verbose` | Enable verbose output |
-| `--quiet` | Minimal output, only errors |
-| `--yes` | Answer yes to all prompts |
-| `--no-color` | Disable colored output |
+```bash
+pulumi-backend s3Login
+```
 
-### Cloud to S3 Options
+## 📝 Options Reference
 
-| Option | Description |
-|--------|-------------|
-| `--bucket` | S3 bucket name for backend storage (required) |
-| `--region` | AWS region for resources (default: from AWS_REGION) |
-| `--create-bucket` | Create S3 bucket if it doesn't exist (default: true) |
-| `--secrets-provider` | Secrets provider: 'passphrase', 'awskms', 'default' |
-| `--passphrase` | Passphrase for secrets encryption |
-| `--kms-alias` | KMS key alias for secrets (default: alias/pulumi-secrets) |
+### **🔄 Migration Common Options**
 
-### S3 to Cloud Options
+| Option           | Description                                     |
+|------------------|-------------------------------------------------|
+| `--stack`        | **Stack name to migrate** (required)            |
+| `--workspace`    | Path to Pulumi project (default: current directory) |
+| `--delete-source`| Delete the source stack after successful migration |
+| `--skip-verify`  | Skip verification step                          |
+| `--verbose`      | Enable verbose output                           |
+| `--quiet`        | Minimal output, only errors                     |
+| `--yes`          | Answer yes to all prompts                       |
+| `--no-color`     | Disable colored output                          |
 
-| Option | Description |
-|--------|-------------|
-| `--backend` | S3 backend URL (e.g., s3://my-bucket?region=us-west-2) (required) |
-| `--organization` | Pulumi Cloud organization (optional) |
-| `--access-token` | Pulumi access token (uses stored credentials if not specified) |
+### **🔄 Cloud to S3 Options**
+
+| Option               | Description                                           |
+|----------------------|-------------------------------------------------------|
+| `--bucket`           | **S3 bucket name for backend storage** (optional)    |
+| `--region`           | AWS region for resources (default: from AWS_REGION)    |
+| `--create-bucket`    | Create S3 bucket if it doesn't exist (default: true)  |
+| `--secrets-provider` | Secrets provider: 'passphrase', 'awskms', 'default'   |
+| `--passphrase`       | Passphrase for secrets encryption                    |
+| `--kms-alias`        | KMS key alias for secrets (default: alias/pulumi-secrets) |
+
+### **🔄 S3 to Cloud Options**
+
+| Option               | Description                                                      |
+|----------------------|------------------------------------------------------------------|
+| `--backend`          | **S3 backend URL** (e.g., s3://my-bucket?region=us-west-2) (optional) |
+| `--organization`     | Pulumi Cloud organization (optional)                            |
+| `--access-token`     | Pulumi access token (uses stored credentials if not specified)   |
 | `--secrets-provider` | Target secrets provider: 'service' (default), 'passphrase', 'awskms', 'default' |
-| `--passphrase` | Source passphrase for decrypting secrets |
-| `--kms-key` | Source KMS key for decrypting secrets |
+| `--passphrase`       | Source passphrase for decrypting secrets                        |
+| `--kms-key`          | Source KMS key for decrypting secrets                           |
 
-### Initialize Options
+### **🆕 Initialize Options**
 
-| Option | Description |
-|--------|-------------|
-| `--name` | Project name (default: current directory name) |
-| `--description` | Project description |
-| `--template` | Pulumi template (default: typescript) |
-| `--stack` | Initial stack name (default: dev) |
-| `--bucket` | S3 bucket name (default: derived from project name) |
-| `--secrets-provider` | Secrets provider type (default: awskms) |
+| Option              | Description                                         |
+|---------------------|-----------------------------------------------------|
+| `--name`            | Project name (default: current directory name)      |
+| `--description`     | Project description                                 |
+| `--template`        | Pulumi template (default: typescript)               |
+| `--stack`           | Initial stack name (default: dev)                   |
+| `--bucket`          | S3 bucket name (default: derived from project name) |
+| `--secrets-provider`| Secrets provider type (default: awskms)             |
 
-## Requirements
+
+## 📋 Requirements
 
 - [Deno](https://deno.land) runtime
 - [Pulumi CLI](https://www.pulumi.com/docs/install/)
 - [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate permissions
 - [Git](https://git-scm.com/) for installations and updates
 
-## Repository Structure
+## 📂 Repository Structure
 
-The tool consists of these key files:
+Organized for clarity and efficiency, the tool's repository includes:
 
 ```
 pulumi-backend/
 ├── pulumi-backend.ts       # Main CLI interface
 ├── pulumi-cloud-to-s3.ts   # Cloud to S3 migration
 ├── pulumi-s3-to-cloud.ts   # S3 to Cloud migration
+├── pulumi-s3-login.ts      # S3 backend auto login
 ├── pulumi-init.ts          # Project initialization
 └── install.sh              # One-line installer
 ```
 
-## License
+## 📝 License
 
-MIT
+Licensed under the [MIT License](LICENSE).
+
+## 🤝 Contributing
+
+We welcome contributions! Please open issues and pull requests on [GitHub](https://github.com/jiraguha/pulumi-backend).
+
+
+## 🌐 Stay Connected
+
+Follow us on [GitHub](https://github.com/jiraguha/pulumi-backend) to stay updated with the latest developments and features.
