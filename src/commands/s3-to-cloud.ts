@@ -131,7 +131,7 @@ export default async function s3ToCloudCommand(rawArgs: string[]): Promise<void>
         regions,
         regions.indexOf(defaultRegion) !== -1 ? regions.indexOf(defaultRegion) : 0,
       );
-      backend = `s3://${bucketName}\\?region=${region}`;
+      backend = `s3://${bucketName}?region=${region}`;
     } else {
       backend = `s3://${suggestedBucketName}`;
       logger.info(`Using generated bucket name: ${bold(suggestedBucketName)}`);

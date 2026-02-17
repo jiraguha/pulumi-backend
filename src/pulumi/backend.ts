@@ -30,7 +30,7 @@ export async function loginToS3BackendWithBucket(
   bucket: string,
   region: string,
 ): Promise<boolean> {
-  const loginUrl = `s3://${bucket}\\?region=${region}`;
+  const loginUrl = `s3://${bucket}?region=${region}`;
   return loginToS3Backend(ctx, loginUrl);
 }
 
