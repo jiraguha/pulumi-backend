@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Pulumi Backend Management Tool Installer
-# 
+#
 # This script installs the Pulumi Backend Management Tool, which allows
 # managing Pulumi stacks across different backends (Cloud and S3).
 #
@@ -34,7 +34,7 @@ while [[ "$#" -gt 0 ]]; do
         --branch) GIT_REF="$2"; shift ;;
         --tag) GIT_REF="$2"; shift ;;
         --ref) GIT_REF="$2"; shift ;;
-        --help) 
+        --help)
             echo -e "${BOLD}Pulumi Backend Management Tool Installer${NC}"
             echo ""
             echo "Options:"
@@ -153,9 +153,9 @@ if [[ -d "$REPO_DIR" ]]; then
     if [[ -d "$REPO_DIR/.git" ]]; then
         # Directory exists and is a git repo, try to update it
         echo -e "\n${YELLOW}Repository already exists, updating...${NC}"
-        (cd "$REPO_DIR" && git fetch && git checkout "$GIT_REF" && git pull) || { 
-            echo -e "${RED}Failed to update existing repository${NC}"; 
-            exit 1; 
+        (cd "$REPO_DIR" && git fetch && git checkout "$GIT_REF" && git pull) || {
+            echo -e "${RED}Failed to update existing repository${NC}";
+            exit 1;
         }
         echo -e "${GREEN}✓${NC} Repository updated successfully"
     else
@@ -194,47 +194,32 @@ fi
 
 # Validate repository structure
 echo -e "\n${BOLD}Validating repository...${NC}"
-REQUIRED_FILES=(
-    "pulumi-backend.ts"
-    "pulumi-cloud-to-s3.ts"
-    "pulumi-s3-to-cloud.ts"
-    "pulumi-init.ts"
-)
 
-for file in "${REQUIRED_FILES[@]}"; do
-    if [[ ! -f "$REPO_DIR/$file" ]]; then
-        echo -e "${RED}Error: Required file $file not found in repository${NC}"
-        exit 1
-    fi
-done
+if [[ ! -f "$REPO_DIR/mod.ts" ]]; then
+    echo -e "${RED}Error: Required file mod.ts not found in repository${NC}"
+    exit 1
+fi
+
+if [[ ! -d "$REPO_DIR/src" ]]; then
+    echo -e "${RED}Error: Required directory src/ not found in repository${NC}"
+    exit 1
+fi
 
 echo -e "${GREEN}✓${NC} Repository structure valid"
 
-# Install scripts
-echo -e "\n${BOLD}Installing scripts...${NC}"
+# Install
+echo -e "\n${BOLD}Installing...${NC}"
 
-# Make scripts executable
-chmod +x "$REPO_DIR"/*.ts || { 
-    echo -e "${RED}Failed to set executable permissions${NC}"; 
-    exit 1; 
+# Make mod.ts executable
+chmod +x "$REPO_DIR/mod.ts" || {
+    echo -e "${RED}Failed to set executable permissions${NC}";
+    exit 1;
 }
 
-# Install each script
+# Create symlink to mod.ts
 INSTALL_OK=true
-for file in "${REQUIRED_FILES[@]}"; do
-    echo -n "Installing $file to $INSTALL_DIR: "
-    if cp "$REPO_DIR/$file" "$INSTALL_DIR/"; then
-        echo -e "${GREEN}✓${NC}"
-    else
-        echo -e "${RED}Failed${NC}"
-        INSTALL_OK=false
-        break
-    fi
-done
-
-# Create symlink to main script without .ts extension
-echo -n "Creating symlink pulumi-backend: "
-if ln -sf "$INSTALL_DIR/pulumi-backend.ts" "$INSTALL_DIR/pulumi-backend"; then
+echo -n "Creating symlink pulumi-backend -> $REPO_DIR/mod.ts: "
+if ln -sf "$REPO_DIR/mod.ts" "$INSTALL_DIR/pulumi-backend"; then
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${RED}Failed${NC}"
@@ -247,20 +232,21 @@ if [[ "$INSTALL_OK" == "true" ]]; then
     echo -e "\n${BOLD}Repository location:${NC} $REPO_DIR"
     echo -e "To update in the future, run:"
     echo -e "  ${CYAN}pulumi-backend self-update${NC}"
-    
+
     echo -e "\n${BOLD}Usage:${NC}"
     echo -e "  ${CYAN}pulumi-backend cloudToS3${NC} --stack=mystack --bucket=my-pulumi-state [options]"
     echo -e "  ${CYAN}pulumi-backend s3ToCloud${NC} --stack=mystack --backend=s3://my-bucket?region=us-west-2 [options]"
     echo -e "  ${CYAN}pulumi-backend init${NC} --name=my-project --bucket=my-pulumi-state [options]"
+    echo -e "  ${CYAN}pulumi-backend s3Login${NC}"
     echo -e "\n${BOLD}For help:${NC}"
     echo -e "  ${CYAN}pulumi-backend help${NC}"
-    
+
     if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
         echo -e "\n${YELLOW}Note: Add $INSTALL_DIR to your PATH to use pulumi-backend directly.${NC}"
         echo -e "For example, add this to your ~/.bashrc or ~/.zshrc:"
         echo -e "  ${CYAN}export PATH=\"\$PATH:$INSTALL_DIR\"${NC}"
     fi
-    
+
     echo -e "\n${BOLD}Installed version:${NC} $GIT_REF"
 else
     echo -e "\n${RED}Installation failed.${NC}"
