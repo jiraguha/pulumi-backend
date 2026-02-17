@@ -1,5 +1,4 @@
 import { parse } from "@std/flags";
-import { dirname, join } from "@std/path";
 import { exists } from "@std/fs";
 import { bold, dim, cyan, red, yellow, green, blue } from "../ui/colors.ts";
 
@@ -119,29 +118,6 @@ ${bold("OPTIONS:")}
     if (!pullSuccess) {
       console.error(red(`Failed to pull updates: ${pullOutput}`));
       Deno.exit(1);
-    }
-
-    // Get the script's installation directory
-    const scriptPath = new URL(import.meta.url).pathname;
-    const installDir = dirname(dirname(dirname(scriptPath))); // Go up from src/commands/
-
-    // Symlink mod.ts to pulumi-backend
-    const symlinkPath = join(installDir, "pulumi-backend");
-    const symlinkTarget = join(installDir, "mod.ts");
-
-    try {
-      const symlinkInfo = await Deno.lstat(symlinkPath);
-      if (!symlinkInfo.isSymlink) {
-        await Deno.remove(symlinkPath);
-        await Deno.symlink(symlinkTarget, symlinkPath);
-      }
-    } catch {
-      try {
-        await Deno.symlink(symlinkTarget, symlinkPath);
-      } catch (error) {
-        console.error(yellow(`Note: Failed to create symlink: ${(error as Error).message}`));
-        console.log(yellow("This is not critical, you can still use mod.ts directly."));
-      }
     }
 
     const { output: commitHash } = await executeCommand(

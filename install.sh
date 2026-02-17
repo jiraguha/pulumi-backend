@@ -210,16 +210,16 @@ echo -e "${GREEN}✓${NC} Repository structure valid"
 # Install
 echo -e "\n${BOLD}Installing...${NC}"
 
-# Make mod.ts executable
-chmod +x "$REPO_DIR/mod.ts" || {
+# Make scripts executable
+chmod +x "$REPO_DIR/mod.ts" "$REPO_DIR/pulumi-backend.sh" || {
     echo -e "${RED}Failed to set executable permissions${NC}";
     exit 1;
 }
 
-# Create symlink to mod.ts
+# Create symlink to shell wrapper (resolves symlinks so deno.json import map works)
 INSTALL_OK=true
-echo -n "Creating symlink pulumi-backend -> $REPO_DIR/mod.ts: "
-if ln -sf "$REPO_DIR/mod.ts" "$INSTALL_DIR/pulumi-backend"; then
+echo -n "Creating symlink pulumi-backend -> $REPO_DIR/pulumi-backend.sh: "
+if ln -sf "$REPO_DIR/pulumi-backend.sh" "$INSTALL_DIR/pulumi-backend"; then
     echo -e "${GREEN}✓${NC}"
 else
     echo -e "${RED}Failed${NC}"
